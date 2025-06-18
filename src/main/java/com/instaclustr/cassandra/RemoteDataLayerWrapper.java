@@ -59,11 +59,4 @@ public class RemoteDataLayerWrapper extends DataLayerWrapper
     {
         return partition;
     }
-
-    @Override
-    public AbstractOutputFile<?> getNextDestination()
-    {
-        setNextDestination(currentDestination().next());
-        return currentDestination();
-    }
 }

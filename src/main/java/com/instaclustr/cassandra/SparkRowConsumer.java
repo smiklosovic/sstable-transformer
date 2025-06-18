@@ -21,6 +21,7 @@ package com.instaclustr.cassandra;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.cassandra.spark.data.DataLayer;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
@@ -43,20 +44,22 @@ public class SparkRowConsumer implements Consumer<InternalRow>, AutoCloseable
     private final StructType structType;
     private final Schema schema;
     private final AbstractOutputFile<?> destination;
+    private final DataLayer dataLayer;
 
     /**
-     * @param structType     Spark's {@link StructType} of a processed table.
+     * @param dataLayer      Data layer to use
      * @param schema         Avro schema used for {@link ParquetWriter}.
      * @param destination    Initial destination to write data to.
      * @param options        Transformation options
      * @throws IOException if anything IO-related goes wrong
      */
-    public SparkRowConsumer(StructType structType,
+    public SparkRowConsumer(DataLayer dataLayer,
                             Schema schema,
                             AbstractOutputFile<?> destination,
                             TransformerOptions options) throws IOException
     {
-        this.structType = structType;
+        this.dataLayer = dataLayer;
+        this.structType = this.dataLayer.structType();
         this.schema = schema;
         this.destination = destination;
         writer = createWriter(this.destination,

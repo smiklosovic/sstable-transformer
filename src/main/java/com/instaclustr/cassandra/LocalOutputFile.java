@@ -60,9 +60,6 @@ public class LocalOutputFile extends AbstractOutputFile<LocalOutputFile>
 
     private Path resolvePath()
     {
-        if (getNumber() == 1)
-            return getInternalPath().toAbsolutePath();
-        else
-            return Paths.get(getInternalPath().toAbsolutePath().toString().replace(".parquet", "-" + getNumber() + ".parquet"));
+        return Paths.get(getInternalPath().toAbsolutePath().toString().replace(".parquet", "-" + getNumber() + ".parquet"));
     }
 }

@@ -43,9 +43,9 @@ public abstract class DataLayerWrapper
      */
     public AbstractOutputFile<?> getNextDestination()
     {
-        return destination.next();
+        setNextDestination(currentDestination().next());
+        return currentDestination();
     }
-
     /**
      * @return current destination this wrapper write data to
      */

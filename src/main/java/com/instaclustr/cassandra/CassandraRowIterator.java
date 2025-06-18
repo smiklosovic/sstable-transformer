@@ -19,18 +19,37 @@
 package com.instaclustr.cassandra;
 
 import org.apache.avro.Schema;
+import org.apache.cassandra.bridge.CassandraBridge;
 import org.apache.cassandra.spark.data.DataLayer;
 import org.apache.cassandra.spark.sparksql.SparkRowIterator;
 import org.apache.spark.sql.avro.SchemaConverters;
+import org.apache.spark.sql.catalyst.InternalRow;
+import org.apache.spark.sql.catalyst.expressions.BoundReference;
+import org.apache.spark.sql.catalyst.expressions.RowOrdering;
+import org.apache.spark.sql.catalyst.expressions.SortDirection;
+import org.apache.spark.sql.catalyst.expressions.SortOrder;
+import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.IntegerType;
+import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.collection.JavaConverters;
+import scala.collection.Seq;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Transforms stream of rows from Cassandra by {@link SparkRowIterator}.
@@ -49,6 +68,7 @@ public class CassandraRowIterator implements AutoCloseable
     private final Schema avroSchema;
     private final TransformerOptions options;
     private final long maxRowsPerFile;
+    private final Comparator<InternalRow> rowComparator;
 
     public CassandraRowIterator(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
     {
@@ -60,6 +80,10 @@ public class CassandraRowIterator implements AutoCloseable
                                                       false,
                                                       "root",
                                                       SSTableToParquetTransformer.class.getCanonicalName());
+
+        List<DataType> javaSchema = stream(structType.fields()).map(StructField::dataType).collect(toList());
+        Seq<DataType> scalaSchema = JavaConverters.asScalaBuffer(javaSchema).toSeq();
+        this.rowComparator = RowOrdering.createNaturalAscendingOrdering(scalaSchema);
 
         this.maxRowsPerFile = dataLayerWrapper.getMaxRowsPerParquetFile();
         this.sparkRowConsumer = switchConsumer(dataLayerWrapper.currentDestination());
@@ -77,10 +101,17 @@ public class CassandraRowIterator implements AutoCloseable
         {
             int count = 0;
             long start = System.currentTimeMillis();
+
+            LinkedList<InternalRow> rows = new LinkedList<>();
+
             while (iterator.next())
             {
+                InternalRow row = iterator.get();
+                rows.addFirst(row);
+                count++;
                 if (count == maxRowsPerFile)
                 {
+                    sortAndWrite(rows);
                     start = printDuration(dataLayerWrapper.currentDestination(),
                                           count,
                                           start,
@@ -91,10 +122,9 @@ public class CassandraRowIterator implements AutoCloseable
                     outputFiles.add(nextDestination);
                     count = 0;
                 }
-
-                sparkRowConsumer.accept(iterator.get());
-                count++;
             }
+
+            sortAndWrite(rows);
 
             if (count != 0)
                 printDuration(dataLayerWrapper.currentDestination(), count, start, System.currentTimeMillis());
@@ -120,6 +150,14 @@ public class CassandraRowIterator implements AutoCloseable
         return outputFiles;
     }
 
+    private void sortAndWrite(LinkedList<InternalRow> rows)
+    {
+        rows.sort(rowComparator);
+        for (InternalRow sorted : rows)
+            sparkRowConsumer.accept(sorted);
+        rows.clear();
+    }
+
     private long printDuration(AbstractOutputFile<?> outputFile, int count, long start, long end)
     {
         logger.info("Transformed {} rows to {} in {} seconds.",
@@ -141,11 +179,12 @@ public class CassandraRowIterator implements AutoCloseable
             if (sparkRowConsumer != null)
                 sparkRowConsumer.close();
 
-            return new SparkRowConsumer(dataLayer.structType(),
+            return new SparkRowConsumer(dataLayer,
                                         avroSchema,
                                         destination,
                                         options);
-        } catch (Throwable t)
+        }
+        catch (Throwable t)
         {
             throw new TransformerException("Error while closing current Spark row consumer", t);
         }
