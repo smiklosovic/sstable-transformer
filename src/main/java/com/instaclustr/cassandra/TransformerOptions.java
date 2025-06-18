@@ -72,6 +72,7 @@ public class TransformerOptions implements Serializable
         private long maxRowsPerFile = -1;
         private int parallelism = Runtime.getRuntime().availableProcessors();
         private TransformationStrategy transformationStrategy = ONE_PARQUET_PER_SSTABLE;
+        private boolean sorted;
 
         public Builder keyspace(String keyspace)
         {
@@ -161,6 +162,12 @@ public class TransformerOptions implements Serializable
             return this;
         }
 
+        public Builder sorted(boolean sorted)
+        {
+            this.sorted = sorted;
+            return this;
+        }
+
         public TransformerOptions build()
         {
             TransformerOptions options = new TransformerOptions();
@@ -177,6 +184,7 @@ public class TransformerOptions implements Serializable
             options.partitions = partitions;
             options.parallelism = parallelism;
             options.transformationStrategy = transformationStrategy;
+            options.sorted = sorted;
 
             options.validate();
 
@@ -247,6 +255,13 @@ public class TransformerOptions implements Serializable
                     "Can be one of ONE_PARQUET_PER_SSTABLE, ONE_PARQUET_ALL_SSTABLES. " +
                     "Defaults to ONE_PARQUET_PER_SSTABLE - can not be used when --sidecar is specified.")
     public TransformationStrategy transformationStrategy = ONE_PARQUET_PER_SSTABLE;
+
+    @Option(names = {"--sorted"},
+            description = "Flag for telling whether rows in each Parquet file should be sorted or not. " +
+                    "Use with caution as sorting will happen in memory and all Spark rows will be held in memory " +
+                    "until sorting is done. For large datasets, use this flag together with --max-rows-per-parquet-file so " +
+                    "sorting will be limited to number of rows per that option only.")
+    public boolean sorted;
 
     public Map<String, String> forRemoteDataLayer()
     {

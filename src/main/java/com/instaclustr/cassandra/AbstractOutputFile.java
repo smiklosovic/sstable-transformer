@@ -32,6 +32,7 @@ public abstract class AbstractOutputFile<T extends AbstractOutputFile<T>> implem
     private final Path internalPath;
     private final int number;
     private boolean finished = false;
+    private int rows;
 
     public AbstractOutputFile(Path path, int number)
     {
@@ -103,6 +104,16 @@ public abstract class AbstractOutputFile<T extends AbstractOutputFile<T>> implem
     public boolean canWrite()
     {
         return !finished;
+    }
+
+    public void setRows(int rows)
+    {
+        this.rows = rows;
+    }
+
+    public int getRows()
+    {
+        return rows;
     }
 
     private static class PositionOutputStreamWrapper extends PositionOutputStream

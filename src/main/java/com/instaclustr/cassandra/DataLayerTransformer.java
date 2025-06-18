@@ -23,7 +23,7 @@ import java.util.Collection;
 /**
  * This class is responsible for taking an instance of {@link DataLayerWrapper}, being it
  * local or remote, and transforming data it is responsible for to Parquet files by iterating over
- * all rows by {@link CassandraRowIterator}.
+ * all rows by {@link DataLayerReader}.
  */
 public class DataLayerTransformer
 {
@@ -43,9 +43,9 @@ public class DataLayerTransformer
      */
     public Collection<? extends AbstractOutputFile<?>> transform()
     {
-        try (CassandraRowIterator iterator = new CassandraRowIterator(dataLayerWrapper, options))
+        try
         {
-            return iterator.readAllRows();
+            return new DataLayerReader(dataLayerWrapper, options).read();
         }
         catch (Throwable t)
         {

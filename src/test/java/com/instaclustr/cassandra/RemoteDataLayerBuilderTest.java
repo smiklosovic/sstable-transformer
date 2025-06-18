@@ -35,7 +35,6 @@ import java.util.Map;
 public class RemoteDataLayerBuilderTest
 {
     @Test
-    @Disabled
     public void startSidecar()
     {
         Path sidecarConfig = Paths.get("src/test/resources/sidecar-test.yaml");
@@ -43,7 +42,7 @@ public class RemoteDataLayerBuilderTest
         Server sidecarServer = injector.getInstance(Server.class);
         Future<String> start = sidecarServer.start();
         start.onSuccess(s -> System.out.println(s + " started"));
-        sidecarServer.stop(start.result());
+        sidecarServer.stop(sidecarServer.deploymentId());
     }
 
     @Test

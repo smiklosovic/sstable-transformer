@@ -38,7 +38,7 @@ import java.util.function.Consumer;
 /**
  * Consumes {@link InternalRow} which is basically a Cassandra row.
  */
-public class SparkRowConsumer implements Consumer<InternalRow>, AutoCloseable
+public class ParquetRowWriter implements Consumer<InternalRow>, AutoCloseable
 {
     private final ParquetWriter<GenericRecord> writer;
     private final StructType structType;
@@ -53,7 +53,7 @@ public class SparkRowConsumer implements Consumer<InternalRow>, AutoCloseable
      * @param options        Transformation options
      * @throws IOException if anything IO-related goes wrong
      */
-    public SparkRowConsumer(DataLayer dataLayer,
+    public ParquetRowWriter(DataLayer dataLayer,
                             Schema schema,
                             AbstractOutputFile<?> destination,
                             TransformerOptions options) throws IOException
