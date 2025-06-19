@@ -456,6 +456,9 @@ public class TransformerOptions implements Serializable
         if (partitions != null)
             args.add("--partitions=" + partitions);
 
+        if (sorted)
+            args.add("--sorted");
+
         return args.toArray(new String[0]);
     }
 }

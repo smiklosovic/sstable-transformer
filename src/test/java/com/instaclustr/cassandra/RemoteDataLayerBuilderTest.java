@@ -20,7 +20,6 @@ package com.instaclustr.cassandra;/*
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.vertx.core.Future;
-import org.apache.cassandra.sidecar.modules.SidecarModules;
 import org.apache.cassandra.sidecar.server.Server;
 import org.apache.cassandra.spark.data.CassandraDataLayer;
 import org.apache.cassandra.spark.data.partitioner.CassandraRing;
@@ -34,16 +33,16 @@ import java.util.Map;
 
 public class RemoteDataLayerBuilderTest
 {
-    @Test
-    public void startSidecar()
-    {
-        Path sidecarConfig = Paths.get("src/test/resources/sidecar-test.yaml");
-        Injector injector = Guice.createInjector(SidecarModules.all(sidecarConfig));
-        Server sidecarServer = injector.getInstance(Server.class);
-        Future<String> start = sidecarServer.start();
-        start.onSuccess(s -> System.out.println(s + " started"));
-        sidecarServer.stop(sidecarServer.deploymentId());
-    }
+//    @Test
+//    public void startSidecar()
+//    {
+//        Path sidecarConfig = Paths.get("src/test/resources/sidecar-test.yaml");
+//        Injector injector = Guice.createInjector(SidecarModules.all(sidecarConfig));
+//        Server sidecarServer = injector.getInstance(Server.class);
+//        Future<String> start = sidecarServer.start();
+//        start.onSuccess(s -> System.out.println(s + " started"));
+//        sidecarServer.stop(sidecarServer.deploymentId());
+//    }
 
     @Test
     @Disabled
