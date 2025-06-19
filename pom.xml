@@ -119,6 +119,21 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_2.12</artifactId>
+            <version>3.2.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- misses when starting 4.0 cluster for sidecar-->
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>4.2.15</version>
+            <scope>test</scope>
+        </dependency>
+
 <!--        <dependency>-->
 <!--            <groupId>com.google.inject</groupId>-->
 <!--            <artifactId>guice</artifactId>-->
@@ -192,6 +207,32 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.1</version>
+                <configuration>
+                    <argLine>
+                        -DSKIP_STARTUP_VALIDATIONS=true
+                        -Dfile.encoding=UTF-8 -Djdk.attach.allowAttachSelf=true
+                        --add-exports java.base/jdk.internal.misc=ALL-UNNAMED
+                        --add-exports java.base/jdk.internal.ref=ALL-UNNAMED
+                        --add-exports java.base/sun.nio.ch=ALL-UNNAMED
+                        --add-exports t.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED
+                        --add-exports java.rmi/sun.rmi.registry=ALL-UNNAMED
+                        --add-exports java.rmi/sun.rmi.server=ALL-UNNAMED
+                        --add-exports java.sql/java.sql=ALL-UNNAMED
+                        --add-opens java.base/java.lang.module=ALL-UNNAMED
+                        --add-opens java.base/jdk.internal.loader=ALL-UNNAMED
+                        --add-opens java.base/jdk.internal.ref=ALL-UNNAMED
+                        --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED
+                        --add-opens java.base/jdk.internal.math=ALL-UNNAMED
+                        --add-opens java.base/jdk.internal.module=ALL-UNNAMED
+                        --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED
+                        --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED
+                    </argLine>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
