@@ -34,9 +34,9 @@ import scala.collection.Seq;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 
 import static java.lang.System.currentTimeMillis;
@@ -249,7 +249,11 @@ public class DataLayerReader
         @Override
         protected void internalWrite(SparkRowIterator iterator) throws IOException
         {
-            LinkedList<InternalRow> rows = new LinkedList<>();
+            int arraySize = (int) maxRowsPerFile;
+            if (arraySize == -1)
+                arraySize = Integer.parseInt(System.getProperty("transformer.buffer.size", "10000000"));
+
+            InternalRow[] rows = new InternalRow[arraySize];
 
             boolean shouldSwitch = false;
 
@@ -260,9 +264,9 @@ public class DataLayerReader
                     switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
                     shouldSwitch = false;
                 }
-                InternalRow row = iterator.get();
-                rows.addFirst(row);
-                count++;
+
+                rows[count++] = iterator.get();
+
                 if (count == maxRowsPerFile)
                 {
                     sortAndWrite(rows);
@@ -278,7 +282,8 @@ public class DataLayerReader
                 }
             }
 
-            if (shouldSwitch && !rows.isEmpty())
+            // if we should switch and we have at least something
+            if (shouldSwitch && rows[0] != null)
             {
                 dataLayerWrapper.currentDestination().setRows(count);
                 outputFiles.add(dataLayerWrapper.getNextDestination());
@@ -291,12 +296,18 @@ public class DataLayerReader
                 printDuration(dataLayerWrapper.currentDestination(), count, start, currentTimeMillis());
         }
 
-        private void sortAndWrite(LinkedList<InternalRow> rows)
+        private void sortAndWrite(InternalRow[] rows)
         {
-            rows.sort(rowComparator);
+            Arrays.sort(rows, Comparator.nullsLast(rowComparator));
             for (InternalRow sorted : rows)
-                rowWriter.accept(sorted);
-            rows.clear();
+            {
+                if (sorted != null)
+                    rowWriter.accept(sorted);
+                else
+                    break;
+            }
+
+            Arrays.fill(rows, null);
         }
     }
 }

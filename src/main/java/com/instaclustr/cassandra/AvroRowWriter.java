@@ -74,7 +74,6 @@ public class AvroRowWriter extends GenericRowWriter
         GenericDatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(schema);
         DataFileWriter<GenericRecord> writer = new DataFileWriter<>(datumWriter);
         writer.create(schema, new File(destination.getPath()));
-        writer.setCodec(CodecFactory)
         return writer;
     }
 

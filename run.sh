@@ -32,7 +32,7 @@ java ${JVM_OPTIONS} -jar target/sstable-transformer-1.0.0-SNAPSHOT-bundled.jar t
   --compression="${COMPRESSION}" \
   --output="${OUTPUT_DIR}" \
   --input="${INPUT_DIR}" \
-  --strategy=ONE_FILE_ALL_SSTABLES \
+  --strategy=ONE_FILE_PER_SSTABLE \
   --sorted \
   --max-rows-per-file=1000000 \
   --output-format=PARQUET
