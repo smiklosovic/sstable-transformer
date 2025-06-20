@@ -18,6 +18,7 @@
  */
 package com.instaclustr.cassandra;
 
+import com.instaclustr.cassandra.TransformerOptions.OutputFormat;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 
@@ -29,15 +30,24 @@ import java.nio.file.Paths;
 
 public abstract class AbstractOutputFile<T extends AbstractOutputFile<T>> implements OutputFile
 {
+    private final OutputFormat outputFormat;
     private final Path internalPath;
     private final int number;
     private boolean finished = false;
     private int rows;
 
-    public AbstractOutputFile(Path path, int number)
+    public AbstractOutputFile(OutputFormat outputFormat,
+                              Path path,
+                              int number)
     {
+        this.outputFormat = outputFormat;
         this.internalPath = path;
         this.number = number;
+    }
+
+    public OutputFormat getOutputFormat()
+    {
+        return outputFormat;
     }
 
     public Path getInternalPath()

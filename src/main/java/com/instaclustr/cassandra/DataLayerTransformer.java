@@ -49,7 +49,7 @@ public class DataLayerTransformer
         }
         catch (Throwable t)
         {
-            throw new TransformerException("Unable to transform to Parquet file(s)", t);
+            throw new TransformerException("Unable to transform to " + options.outputFormat + " file(s)", t);
         }
     }
 }

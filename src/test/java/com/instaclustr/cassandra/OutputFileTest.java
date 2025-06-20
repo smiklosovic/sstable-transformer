@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 
 import static com.google.common.collect.BoundType.CLOSED;
 import static com.google.common.collect.BoundType.OPEN;
+import static com.instaclustr.cassandra.TransformerOptions.OutputFormat.PARQUET;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class OutputFileTest
@@ -34,7 +35,7 @@ public class OutputFileTest
     public void testLocalOutputFile()
     {
         Path path = Paths.get("/tmp/file.parquet");
-        LocalOutputFile localOutputFile = new LocalOutputFile(path.toString());
+        LocalOutputFile localOutputFile = new LocalOutputFile(PARQUET, path.toString());
         assertEquals("/tmp/file.parquet", localOutputFile.getInternalPath().toString());
         assertEquals(1, localOutputFile.getNumber());
 
@@ -52,7 +53,7 @@ public class OutputFileTest
     {
         Path path = Paths.get("/tmp/file.parquet");
         Range<BigInteger> range = Range.range(new BigInteger("123"), OPEN, new BigInteger("456"), CLOSED);
-        PartitionAwareLocalOutputFile localOutputFile = new PartitionAwareLocalOutputFile(path, range, 10, 1);
+        PartitionAwareLocalOutputFile localOutputFile = new PartitionAwareLocalOutputFile(PARQUET, path, range, 10, 1);
 
         assertEquals("/tmp/file.parquet", localOutputFile.getInternalPath().toString());
         assertEquals(10, localOutputFile.getPartition());

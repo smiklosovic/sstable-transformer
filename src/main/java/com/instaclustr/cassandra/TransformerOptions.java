@@ -39,17 +39,35 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_PARQUET_ALL_SSTABLES;
-import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_PARQUET_PER_SSTABLE;
+import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_FILE_ALL_SSTABLES;
+import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_FILE_PER_SSTABLE;
 
 public class TransformerOptions implements Serializable
 {
     private static final Logger logger = LoggerFactory.getLogger(TransformerOptions.class);
 
+    public enum OutputFormat implements Serializable
+    {
+        PARQUET(".parquet"),
+        AVRO(".avro");
+
+        final String fileExtension;
+
+        OutputFormat(String fileExtension)
+        {
+            this.fileExtension = fileExtension;
+        }
+
+        public String getFileExtension()
+        {
+            return fileExtension;
+        }
+    }
+
     public enum TransformationStrategy implements Serializable
     {
-        ONE_PARQUET_ALL_SSTABLES,
-        ONE_PARQUET_PER_SSTABLE;
+        ONE_FILE_ALL_SSTABLES,
+        ONE_FILE_PER_SSTABLE;
     }
 
     public enum DataLayerLocation implements Serializable
@@ -60,6 +78,7 @@ public class TransformerOptions implements Serializable
 
     public static class Builder implements Serializable
     {
+        private OutputFormat outputFormat;
         private String keyspace;
         private String table;
         private String createTableStmt;
@@ -71,8 +90,14 @@ public class TransformerOptions implements Serializable
         private boolean bloomFilterEnabled;
         private long maxRowsPerFile = -1;
         private int parallelism = Runtime.getRuntime().availableProcessors();
-        private TransformationStrategy transformationStrategy = ONE_PARQUET_PER_SSTABLE;
+        private TransformationStrategy transformationStrategy = ONE_FILE_PER_SSTABLE;
         private boolean sorted;
+
+        public Builder outputFormat(OutputFormat outputFormat)
+        {
+            this.outputFormat = outputFormat;
+            return this;
+        }
 
         public Builder keyspace(String keyspace)
         {
@@ -172,6 +197,7 @@ public class TransformerOptions implements Serializable
         {
             TransformerOptions options = new TransformerOptions();
 
+            options.outputFormat = outputFormat;
             options.keyspace = keyspace;
             options.table = table;
             options.createTableStmt = createTableStmt;
@@ -197,6 +223,10 @@ public class TransformerOptions implements Serializable
     // for now only this partitioner is supported
     public Partitioner partitioner = Partitioner.Murmur3Partitioner;
 
+    @Option(names = "--output-format",
+            description = "Output format of data, either AVRO or PARQUET")
+    public OutputFormat outputFormat = OutputFormat.PARQUET;
+
     @Option(names = {"--keyspace"},
             description = "Cassandra keyspace name. You do not need to specify it " +
                     "for local data layers.")
@@ -217,7 +247,7 @@ public class TransformerOptions implements Serializable
     public List<String> input = new ArrayList<>();
 
     @Option(names = {"--output"},
-            description = "Output Parquet file",
+            description = "Output file or destination",
             required = true)
     public String output;
 
@@ -235,9 +265,9 @@ public class TransformerOptions implements Serializable
             description = "Flag for telling whether bloom filter should be used upon writing of a Parquet file.")
     public boolean bloomFilterEnabled;
 
-    @Option(names = {"--max-rows-per-parquet-file"},
-            description = "Maximal number of rows per Parquet file. Has to be bigger than 0. Defaults to " +
-                    "undefined which will put all rows to one Parquet file.")
+    @Option(names = {"--max-rows-per-file"},
+            description = "Maximal number of rows per file. Has to be bigger than 0. Defaults to " +
+                    "undefined which will put all rows to one file.")
     public long maxRowsPerFile = -1;
 
     @Option(names = {"--partitions"},
@@ -250,16 +280,16 @@ public class TransformerOptions implements Serializable
     public int parallelism = Runtime.getRuntime().availableProcessors();
 
     @Option(names = {"--strategy"},
-            description = "Whether to convert all SSTables into one Parquet file " +
-                    "or there will be one Parquet file per SSTable. " +
-                    "Can be one of ONE_PARQUET_PER_SSTABLE, ONE_PARQUET_ALL_SSTABLES. " +
-                    "Defaults to ONE_PARQUET_PER_SSTABLE - can not be used when --sidecar is specified.")
-    public TransformationStrategy transformationStrategy = ONE_PARQUET_PER_SSTABLE;
+            description = "Whether to convert all SSTables into one file " +
+                    "or there will be one output file per SSTable. " +
+                    "Can be one of ONE_FILE_PER_SSTABLE, ONE_FILE_ALL_SSTABLES. " +
+                    "Defaults to ONE_FILE_PER_SSTABLE - can not be used when --sidecar is specified.")
+    public TransformationStrategy transformationStrategy = ONE_FILE_PER_SSTABLE;
 
     @Option(names = {"--sorted"},
-            description = "Flag for telling whether rows in each Parquet file should be sorted or not. " +
+            description = "Flag for telling whether rows in each file should be sorted or not. " +
                     "Use with caution as sorting will happen in memory and all Spark rows will be held in memory " +
-                    "until sorting is done. For large datasets, use this flag together with --max-rows-per-parquet-file so " +
+                    "until sorting is done. For large datasets, use this flag together with --max-rows-per-file so " +
                     "sorting will be limited to number of rows per that option only.")
     public boolean sorted;
 
@@ -395,13 +425,13 @@ public class TransformerOptions implements Serializable
             throw new IllegalArgumentException("--output has to be specified");
 
         if (maxRowsPerFile != -1 && maxRowsPerFile < 1)
-            throw new IllegalArgumentException("--max-rows-per-parquet-file can not be lower than 1");
+            throw new IllegalArgumentException("--max-rows-per-file can not be lower than 1");
 
-        if (!sidecar.isEmpty() && transformationStrategy == ONE_PARQUET_PER_SSTABLE)
+        if (!sidecar.isEmpty() && transformationStrategy == ONE_FILE_PER_SSTABLE)
         {
             logger.info("Changed transformation strategy to {} as {} can not be used when --sidecar is specified.",
-                        ONE_PARQUET_ALL_SSTABLES, ONE_PARQUET_PER_SSTABLE);
-            transformationStrategy = ONE_PARQUET_ALL_SSTABLES;
+                        ONE_FILE_ALL_SSTABLES, ONE_FILE_PER_SSTABLE);
+            transformationStrategy = ONE_FILE_ALL_SSTABLES;
         }
 
         parsePartitions(partitions);
@@ -424,7 +454,9 @@ public class TransformerOptions implements Serializable
     public String[] asArgs()
     {
         List<String> args = new ArrayList<>();
-        args.add("sstable2parquet");
+        args.add("transform");
+        if (outputFormat != null)
+            args.add("--output-format=" + outputFormat.name());
         if (keyspace != null)
             args.add("--keyspace=" + keyspace);
         if (table != null)
@@ -448,7 +480,7 @@ public class TransformerOptions implements Serializable
         if (bloomFilterEnabled)
             args.add("--bloom-filter");
         if (maxRowsPerFile > 0)
-            args.add("--max-rows-per-parquet-file=" + maxRowsPerFile);
+            args.add("--max-rows-per-file=" + maxRowsPerFile);
 
         args.add("--parallelism=" + parallelism);
         args.add("--strategy=" + transformationStrategy.name());

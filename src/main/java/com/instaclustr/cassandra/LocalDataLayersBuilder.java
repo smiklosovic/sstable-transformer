@@ -41,7 +41,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_PARQUET_PER_SSTABLE;
+import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_FILE_PER_SSTABLE;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
 
@@ -53,31 +53,31 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
 {
     private static final Logger logger = LoggerFactory.getLogger(LocalDataLayersBuilder.class);
 
-    private TransformationStrategy transformationStrategy = ONE_PARQUET_PER_SSTABLE;
+    private final TransformerOptions options;
+    private TransformationStrategy transformationStrategy = ONE_FILE_PER_SSTABLE;
     private final Set<Path> sstableDataPaths = new HashSet<>();
     private final String output;
-    private final Map<String, String> options;
+    private final Map<String, String> dataLayerOptions;
 
     /**
-     *
-     * @param dataLayerOptions options for {@link LocalDataLayer}
-     * @param output where to write data
-     * @param maxRowsPerFile maximum number of rows per file.
+     * @param options program options
      */
-    public LocalDataLayersBuilder(Map<String, String> dataLayerOptions, String output, long maxRowsPerFile)
+    public LocalDataLayersBuilder(TransformerOptions options)
     {
-        super(maxRowsPerFile);
-        if (dataLayerOptions.get("version") == null)
+        super(options.maxRowsPerFile);
+        Map<String, String> localDataLayerOptions = options.forLocalDataLayer();
+        if (localDataLayerOptions.get("version") == null)
             throw new TransformerException("Missing 'version' option");
-        if (dataLayerOptions.get("partitioner") == null)
+        if (localDataLayerOptions.get("partitioner") == null)
             throw new TransformerException("Missing 'partitioner' option");
-        if (dataLayerOptions.get("keyspace") == null)
+        if (localDataLayerOptions.get("keyspace") == null)
             throw new TransformerException("Missing 'keyspace' option");
-        if (dataLayerOptions.get("createstmt") == null)
+        if (localDataLayerOptions.get("createstmt") == null)
             throw new TransformerException("Missing 'createstmt' option");
 
-        options = new HashMap<>(dataLayerOptions);
-        this.output = output;
+        this.options = options;
+        this.dataLayerOptions = new HashMap<>(localDataLayerOptions);
+        this.output = options.output;
     }
 
     /**
@@ -136,8 +136,7 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
                                         if (p.toFile().canRead())
                                         {
                                             return true;
-                                        }
-                                        else
+                                        } else
                                         {
                                             logger.info("Skipping not readable {} from processing.", p.toAbsolutePath());
                                             return false;
@@ -146,13 +145,11 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
                             .collect(toSet());
 
                     sstableDataPaths.addAll(dataFiles);
-                }
-                catch (Throwable t)
+                } catch (Throwable t)
                 {
                     throw new TransformerException(format("Unable to list %s", path.toFile().getAbsolutePath()), t);
                 }
-            }
-            else
+            } else
             {
                 if (isDataFile(path))
                 {
@@ -171,8 +168,8 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
 
     /**
      * Builds local data layer wrappers. Based on used strategy, the resulting collection might
-     * contain only one wrapper when {@link TransformationStrategy#ONE_PARQUET_ALL_SSTABLES} is used,
-     * or multiple wrappers when {@link TransformationStrategy#ONE_PARQUET_PER_SSTABLE} is used.
+     * contain only one wrapper when {@link TransformationStrategy#ONE_FILE_ALL_SSTABLES} is used,
+     * or multiple wrappers when {@link TransformationStrategy#ONE_FILE_PER_SSTABLE} is used.
      *
      * @return wrappers
      */
@@ -183,9 +180,9 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
 
         switch (transformationStrategy)
         {
-            case ONE_PARQUET_ALL_SSTABLES:
+            case ONE_FILE_ALL_SSTABLES:
                 return oneParquetAllSSTables();
-            case ONE_PARQUET_PER_SSTABLE:
+            case ONE_FILE_PER_SSTABLE:
                 return oneParquetPerSSTable();
             default:
                 throw new TransformerException(format("Unsupported transformation strategy %s", transformationStrategy));
@@ -203,7 +200,7 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
 
         for (Path dataPath : sstableDataPaths)
         {
-            LocalDataLayer dataLayer = LocalDataLayer.from(options);
+            LocalDataLayer dataLayer = LocalDataLayer.from(dataLayerOptions);
             dataLayer.setDataFilePaths(Set.of(dataPath));
             wrappedDataLayers.add(new LocalDataLayerWrapper(dataLayer, getOutputFile(output, dataPath), maxRowsPerParquetFile()));
         }
@@ -213,7 +210,7 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
 
     private Collection<LocalDataLayerWrapper> oneParquetAllSSTables()
     {
-        LocalDataLayer dataLayer = LocalDataLayer.from(options);
+        LocalDataLayer dataLayer = LocalDataLayer.from(dataLayerOptions);
         dataLayer.setDataFilePaths(new HashSet<>(sstableDataPaths));
         return Collections.singletonList(new LocalDataLayerWrapper(dataLayer,
                                                                    getOutputFile(output, null),
@@ -239,22 +236,26 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
     {
         assert !(output == null && dataPath == null) : "both output and data path can not be null at the same time";
 
+        TransformerOptions.OutputFormat format = options.outputFormat;
+        String fileExtension = format.fileExtension;
+
         if (output == null)
-            return new LocalOutputFile(dataPath.toAbsolutePath().toString() + ".parquet");
+            return new LocalOutputFile(format,
+                                       dataPath.toAbsolutePath().toString() + fileExtension);
 
         Path outputPath = Paths.get(output);
 
         if (dataPath != null)
         {
-            String parquetFile = dataPath.getFileName().toString() + ".parquet";
-            return new LocalOutputFile(outputPath.resolve(parquetFile).toAbsolutePath().toString());
+            String aFile = dataPath.getFileName().toString() + fileExtension;
+            return new LocalOutputFile(format, outputPath.resolve(aFile).toAbsolutePath().toString());
         }
         else
         {
             if (outputPath.toFile().isDirectory())
-                return new LocalOutputFile(outputPath.resolve(UUID.randomUUID() + ".parquet").toAbsolutePath().toString());
+                return new LocalOutputFile(format, outputPath.resolve(UUID.randomUUID() + fileExtension).toAbsolutePath().toString());
             else
-                return new LocalOutputFile(output);
+                return new LocalOutputFile(format, output);
         }
     }
 }

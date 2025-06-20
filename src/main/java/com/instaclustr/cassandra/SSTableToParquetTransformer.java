@@ -32,8 +32,8 @@ import static com.instaclustr.cassandra.DataLayerWrapperBuilders.getRemoteDataLa
 import static com.instaclustr.cassandra.TransformerOptions.DataLayerLocation.REMOTE;
 import static java.util.stream.Collectors.toList;
 
-@Command(name = "sstable2parquet",
-        description = "Transform SSTables to Parquet files.",
+@Command(name = "transform",
+        description = "Transform SSTables to Parquet or Avro files.",
         versionProvider = Transformer.class,
         subcommands = HelpCommand.class)
 public class SSTableToParquetTransformer implements Runnable

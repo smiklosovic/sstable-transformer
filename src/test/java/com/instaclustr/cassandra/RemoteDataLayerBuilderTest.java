@@ -54,7 +54,8 @@ public class RemoteDataLayerBuilderTest
                                             "createsnapshot", "true");
         Map<String, String> sidecarClient = Map.of();
         Map<String, String> ssl = Map.of();
-        List<RemoteDataLayerWrapper> build = new RemoteDataLayersBuilder(client, sidecarClient, ssl, "/tmp/file", -1, 1).build();
+        TransformerOptions options = new TransformerOptions();
+        List<RemoteDataLayerWrapper> build = new RemoteDataLayersBuilder(client, sidecarClient, ssl, options, 1).build();
         CassandraDataLayer dataLayer = (CassandraDataLayer) build.get(0).getDataLayer();
         CassandraRing ring = dataLayer.ring();
         int partitionCount = dataLayer.partitionCount();

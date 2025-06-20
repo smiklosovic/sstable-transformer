@@ -25,23 +25,23 @@ This will build RPM and Debian packages for bundled artifact.
 ./mvnw clean install -Pdefault,deb,rpm
 ----
 
-When packages are installed, there will be `/usr/local/bin/sstable-parquet-transformer` script which
+When packages are installed, there will be `/usr/local/bin/sstable-transformer` script which
 invokes the tool.
 
 === Usage
 
-The tool has two subcommands for now, called `sstable2parquet` and `partitions`.
+The tool has two subcommands for now, called `transform` and `partitions`.
 
 ----
-$ java -jar target/sstable-parquet-transformer-1.0.0-SNAPSHOT-bundled.jar help
+$ java -jar target/sstable-transformer-1.0.0-SNAPSHOT-bundled.jar help
 Usage: transformer [-hV] [COMMAND]
-Transforms Cassandra SSTable to Parquet file
+Transforms Cassandra SSTable to Parquet or Avro file
   -h, --help      Show this help message and exit.
   -V, --version   Print version information and exit.
 Commands:
-  sstable2parquet  Transform SSTables to Parquet files
-  partitions       Realize how many Spark partitions your Cassandra ring consists of
-  help             Display help information about the specified command.
+  transform   Transform SSTables to Parquet or Avro files.
+  partitions  Realize how many Spark partitions your Cassandra ring consists of.
+  help        Display help information about the specified command.
 ----
 
 The best explanation will be an example.
@@ -107,9 +107,9 @@ id|col1|col2
 The strategy of the transformation is specified via `--strategy` option, and it can have two values:
 
 * `ONE_PARQUET_ALL_SSTABLE`
-* `ONE_PARQUET_PER_SSTABLE`
+* `ONE_FILE_PER_SSTABLE`
 
-The default is `ONE_PARQUET_PER_SSTABLE` when not specified,
+The default is `ONE_FILE_PER_SSTABLE` when not specified,
 so you will have as many Parquet files as many input SSTables there are.
 
 For compression of Parquet files, there is a support of all compression algorithms
@@ -157,7 +157,7 @@ specific token range. A token range is owned by a specific Cassandra node (as a 
 would occur from that Sidecar while backup replicas would be used in case of node's unavailability.
 
 If there is a necessity to create Parquet files which contain at maximum certain number of rows, this can be
-specified by `--max-rows-per-parquet-file` option.
+specified by `--max-rows-per-file` option.
 
 === Internal details
 
@@ -171,7 +171,7 @@ Next, we put either data layer implementation to Analytics' `SparkRowIterator` w
 read data from supplied SSTables over which we iterate, one row at a time.
 
 We can use both transformation strategies while using `LocalDataLayer` because it has
-direct access to the disk. However, we can use only `ONE_PARQUET_ALL_SSTABLES` for
+direct access to the disk. However, we can use only `ONE_FILE_ALL_SSTABLES` for
 `CassandraDataLayer` (remote processing) because we can not remotely point Sidecar to
 one SSTable only as this is all hidden behind `SparkRowIterator`.
 
@@ -215,7 +215,7 @@ you can also see how it is used in `./run.sh` script.
 SSTables remotely on Cassandra nodes, streamed by Sidecars.
 
 ----
-java -jar target/sstable-parquet-transformer-1.0.0-SNAPSHOT-bundled.jar sstable2parquet \
+java -jar target/sstable-transformer-1.0.0-SNAPSHOT-bundled.jar transform \
   --keyspace=spark_test \
   --table=test3 \
   --output="/tmp/output-dir" \
@@ -227,9 +227,9 @@ java -jar target/sstable-parquet-transformer-1.0.0-SNAPSHOT-bundled.jar sstable2
 ===== Examples of local transformation (SSTables present on local disk)
 
 ----
-java -jar target/sstable-parquet-transformer.jar sstable2parquet \
+java -jar target/sstable-transformer.jar transform \
   --create-table-statement='CREATE TABLE spark_test.test3 (id int PRIMARY KEY, col1 int, col2 int)' \
-  --strategy=ONE_PARQUET_PER_SSTABLE \
+  --strategy=ONE_FILE_PER_SSTABLE \
   --input=/tmp/input-dir-with-sstables \
   --output=/tmp/output-dir
 ----
@@ -241,9 +241,9 @@ When `--output=/tmp/my-transformation.parquet`, all SSTables will be transformed
 called like that.
 
 ----
-java -jar target/sstable-parquet-transformer.jar sstable2parquet \
+java -jar target/sstable-transformer.jar transform \
   --create-table-statement='CREATE TABLE spark_test.test3 (id int PRIMARY KEY, col1 int, col2 int)' \
-  --strategy=ONE_PARQUET_ALL_SSTABLES \
+  --strategy=ONE_FILE_ALL_SSTABLES \
   --input=/tmp/input-tables \
   --output=/tmp/my-transformation.parquet
 ----
@@ -261,7 +261,7 @@ val partitions = CassandraPartitionsResolver.partitions("dc1", "spark_test", "sp
 or you can invoke this tool like this:
 
 ----
-$ java -jar target/sstable-parquet-transformer-1.0.0-SNAPSHOT-bundled.jar partitions \
+$ java -jar target/sstable-transformer-1.0.0-SNAPSHOT-bundled.jar partitions \
     --dc=dc1 \
     --keyspace=spark_test \
     --sidecar=spark-master-1:9043
@@ -302,18 +302,19 @@ You can produce deb and rpm packages by `-Pdeb` and `-Prpm` profile respectively
 ==== Complete help
 
 ----
- $ java -jar target/sstable-parquet-transformer.jar help sstable2parquet
-Usage: transformer sstable2parquet [--bloom-filter]
-                                   [--compression=<compression>]
-                                   [--create-table-statement=<createTableStmt>]
-                                   [--keyspace=<keyspace>]
-                                   [--max-rows-per-parquet-file=<maxRowsPerFile>
-                                   ] --output=<output>
-                                   [--parallelism=<parallelism>]
-                                   [--partitions=<partitions>]
-                                   [--strategy=<transformationStrategy>]
-                                   [--table=<table>] [--input=<input>...]...
-                                   [--sidecar=<sidecar>...]... [COMMAND]
+ $ java -jar target/sstable-transformer-1.0.0-SNAPSHOT-bundled.jar transform help
+Usage: transformer transform [--bloom-filter] [--sorted]
+                             [--compression=<compression>]
+                             [--create-table-statement=<createTableStmt>]
+                             [--keyspace=<keyspace>]
+                             [--max-rows-per-file=<maxRowsPerFile>]
+                             --output=<output> [--output-format=<outputFormat>]
+                             [--parallelism=<parallelism>]
+                             [--partitions=<partitions>]
+                             [--strategy=<transformationStrategy>]
+                             [--table=<table>] [--input=<input>...]...
+                             [--sidecar=<sidecar>...]... [COMMAND]
+Transform SSTables to Parquet or Avro files.
       --bloom-filter       Flag for telling whether bloom filter should be used
                              upon writing of a Parquet file.
       --compression=<compression>
@@ -330,11 +331,13 @@ Usage: transformer sstable2parquet [--bloom-filter]
       --keyspace=<keyspace>
                            Cassandra keyspace name. You do not need to specify
                              it for local data layers.
-      --max-rows-per-parquet-file=<maxRowsPerFile>
-                           Maximal number of rows per Parquet file. Has to be
-                             bigger than 0. Defaults to undefined which will
-                             put all rows to one Parquet file.
-      --output=<output>    Output Parquet file
+      --max-rows-per-file=<maxRowsPerFile>
+                           Maximal number of rows per file. Has to be bigger
+                             than 0. Defaults to undefined which will put all
+                             rows to one file.
+      --output=<output>    Output file or destination
+      --output-format=<outputFormat>
+                           Output format of data, either AVRO or PARQUET
       --parallelism=<parallelism>
                            Number of transformation tasks to run
                              simultaneously. Defaults to number of processors.
@@ -344,19 +347,28 @@ Usage: transformer sstable2parquet [--bloom-filter]
                              to all partitions.
       --sidecar=<sidecar>...
                            List of sidecar hostnames with ports.
+      --sorted             Flag for telling whether rows in each file should be
+                             sorted or not. Use with caution as sorting will
+                             happen in memory and all Spark rows will be held
+                             in memory until sorting is done. For large
+                             datasets, use this flag together with
+                             --max-rows-per-file so sorting will be limited to
+                             number of rows per that option only.
       --strategy=<transformationStrategy>
-                           Whether to convert all SSTables into one Parquet
-                             file or there will be one Parquet file per
-                             SSTable. Can be one of ONE_PARQUET_PER_SSTABLE,
-                             ONE_PARQUET_ALL_SSTABLES. Defaults to
-                             ONE_PARQUET_PER_SSTABLE - can not be used when
+                           Whether to convert all SSTables into one file or
+                             there will be one output file per SSTable. Can be
+                             one of ONE_FILE_PER_SSTABLE,
+                             ONE_FILE_ALL_SSTABLES. Defaults to
+                             ONE_FILE_PER_SSTABLE - can not be used when
                              --sidecar is specified.
       --table=<table>      Cassandra table name. You do not need to specify it
                              for local data layer.
+Commands:
+  help  Display help information about the specified command.
 ----
 
 ----
-$ java -jar target/sstable-parquet-transformer-1.0.0-SNAPSHOT-bundled.jar help partitions
+$ java -jar target/sstable-transformer-1.0.0-SNAPSHOT-bundled.jar help partitions
 Usage: transformer partitions --dc=<dc> --keyspace=<keyspace>
                               --sidecar=<sidecar> [COMMAND]
       --dc=<dc>

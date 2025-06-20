@@ -28,7 +28,7 @@
     </appender>
 
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-        <file>${LOG_FILE_PATH:-/tmp/sstable-parquet-transformer.log}</file>
+        <file>${LOG_FILE_PATH:-/tmp/sstable-transformer.log}</file>
         <encoder>
             <pattern>%date{ISO8601} %-5level [%thread] [%F:%L] %msg%n</pattern>
         </encoder>

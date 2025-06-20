@@ -23,8 +23,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
-import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_PARQUET_ALL_SSTABLES;
-import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_PARQUET_PER_SSTABLE;
+import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_FILE_ALL_SSTABLES;
+import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_FILE_PER_SSTABLE;
 import static com.instaclustr.cassandra.TransformerOptions.parsePartitions;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -48,9 +48,9 @@ public class TransformerOptionsTest
         options.table = "tb";
         assertThatThrownBy(options::validate).hasMessage("--output has to be specified");
         options.output = "/tmp/some-output-dir";
-        assertEquals(ONE_PARQUET_PER_SSTABLE, options.transformationStrategy);
+        assertEquals(ONE_FILE_PER_SSTABLE, options.transformationStrategy);
         options.validate();
-        assertEquals(ONE_PARQUET_ALL_SSTABLES, options.transformationStrategy);
+        assertEquals(ONE_FILE_ALL_SSTABLES, options.transformationStrategy);
         options.validate();
 
         options = new TransformerOptions();
@@ -61,13 +61,13 @@ public class TransformerOptionsTest
         options.output = "/tmp/some-output-dir";
         options.validate();
 
-        assertEquals(ONE_PARQUET_PER_SSTABLE, options.transformationStrategy);
+        assertEquals(ONE_FILE_PER_SSTABLE, options.transformationStrategy);
         assertEquals(-1, options.maxRowsPerFile);
         assertFalse(options.bloomFilterEnabled);
         assertEquals(CompressionCodecName.ZSTD, options.compression);
 
         options.maxRowsPerFile = -100;
-        assertThatThrownBy(options::validate).hasMessage("--max-rows-per-parquet-file can not be lower than 1");
+        assertThatThrownBy(options::validate).hasMessage("--max-rows-per-file can not be lower than 1");
         options.maxRowsPerFile = 1;
         options.validate();
         options.maxRowsPerFile = 10;

@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
 
-    working_directory: ~/sstable-parquet-transformer
+    working_directory: ~/sstable-transformer
 
     docker:
       - image: cimg/openjdk:11.0.20
@@ -22,7 +22,7 @@ jobs:
           key: m2-{{ checksum "pom.xml" }}
 
       - store_test_results:
-          path: ~/sstable-parquet-transformer/target/surefire-reports
+          path: ~/sstable-transformer/target/surefire-reports
 
       - store_artifacts:
           path: /tmp/artifacts
@@ -30,9 +30,9 @@ jobs:
       - persist_to_workspace:
           root: /tmp/artifacts
           paths:
-            - "sstable-parquet-transformer*.jar"
-            - "sstable-parquet-transformer*.rpm"
-            - "sstable-parquet-transformer*.deb"
+            - "sstable-transformer*.jar"
+            - "sstable-transformer*.rpm"
+            - "sstable-transformer*.deb"
 
 workflows:
   version: 2
@@ -41,4 +41,4 @@ workflows:
       - build:
           filters:
             tags:
-              only: /^sstable-parquet-transformer-\d+\.\d+\.\d+$/
+              only: /^sstable-transformer-\d+\.\d+\.\d+$/

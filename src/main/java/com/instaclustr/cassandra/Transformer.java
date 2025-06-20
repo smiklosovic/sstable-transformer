@@ -28,7 +28,7 @@ import picocli.CommandLine.Spec;
 
 @Command(name = "transformer",
         mixinStandardHelpOptions = true,
-        description = "Transforms Cassandra SSTable to Parquet file",
+        description = "Transforms Cassandra SSTable to Parquet or Avro file",
         subcommands = {SSTableToParquetTransformer.class, CassandraPartitionsResolver.class, HelpCommand.class},
         versionProvider = Transformer.class,
         usageHelpWidth = 128)
@@ -95,6 +95,7 @@ public class Transformer implements IVersionProvider, Runnable
         @Override
         public int handleExecutionException(Exception e, CommandLine commandLine, CommandLine.ParseResult parseResult)
         {
+            e.printStackTrace();
             System.err.println("Error while transforming: " + e.getMessage());
             commandLine.usage(System.err);
             return commandLine.getCommandSpec().exitCodeOnExecutionException();

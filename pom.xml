@@ -4,10 +4,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.instaclustr</groupId>
-    <artifactId>sstable-parquet-transformer</artifactId>
+    <artifactId>sstable-transformer</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 
-    <name>sstable-parquet-transformer</name>
+    <name>sstable-transformer</name>
     <description>Transformer of SSTables from Cassandra to Parquet files</description>
     <url>https://github.com/instaclustr/cassandra-parquet-transformer</url>
 
@@ -61,9 +61,9 @@
     </organization>
 
     <scm>
-        <connection>scm:git:git://git@github.com:instaclustr/sstable-parquet-transformer</connection>
-        <developerConnection>scm:git:ssh://github.com/instaclustr/sstable-parquet-transformer.git</developerConnection>
-        <url>git://github.com/instaclustr/sstable-parquet-transformer.git</url>
+        <connection>scm:git:git://git@github.com:instaclustr/sstable-transformer</connection>
+        <developerConnection>scm:git:ssh://github.com/instaclustr/sstable-transformer.git</developerConnection>
+        <url>git://github.com/instaclustr/sstable-transformer.git</url>
     </scm>
 
     <distributionManagement>
@@ -109,6 +109,13 @@
             <version>1.5.18</version>
         </dependency>
 
+        <!-- misses when starting 4.0 cluster for sidecar-->
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>4.2.15</version>
+        </dependency>
+
         <!-- test dependencies -->
 
         <!-- for sidecar -->
@@ -123,14 +130,6 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_2.12</artifactId>
             <version>3.2.2</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- misses when starting 4.0 cluster for sidecar-->
-        <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-core</artifactId>
-            <version>4.2.15</version>
             <scope>test</scope>
         </dependency>
 
@@ -359,7 +358,7 @@
                 <activeByDefault>true</activeByDefault>
             </activation>
             <build>
-                <finalName>sstable-parquet-transformer-bundled</finalName>
+                <finalName>sstable-transformer-bundled</finalName>
                 <plugins>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -424,7 +423,7 @@
         <profile>
             <id>spark</id>
             <build>
-                <finalName>sstable-parquet-transformer-spark</finalName>
+                <finalName>sstable-transformer-spark</finalName>
                 <plugins>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -511,12 +510,12 @@
                                     <deb>${outputDirectory}/[[name]]_${project.version}.deb</deb>
                                     <dataSet>
                                         <data>
-                                            <src>${outputDirectory}/sstable-parquet-transformer-${project.version}-bundled.jar</src>
-                                            <dst>/usr/share/java/sstable-parquet-transformer-bundled.jar</dst>
+                                            <src>${outputDirectory}/sstable-transformer-${project.version}-bundled.jar</src>
+                                            <dst>/usr/share/java/sstable-transformer-bundled.jar</dst>
                                             <type>file</type>
                                         </data>
                                         <data>
-                                            <src>bin/sstable-parquet-transformer</src>
+                                            <src>bin/sstable-transformer</src>
                                             <type>file</type>
                                             <mapper>
                                                 <type>perm</type>
@@ -555,12 +554,12 @@
 
                                     <entries>
                                         <entry>
-                                            <name>/usr/share/java/sstable-parquet-transformer-bundled.jar</name>
-                                            <file>${outputDirectory}/sstable-parquet-transformer-${project.version}-bundled.jar</file>
+                                            <name>/usr/share/java/sstable-transformer-bundled.jar</name>
+                                            <file>${outputDirectory}/sstable-transformer-${project.version}-bundled.jar</file>
                                         </entry>
                                         <entry>
-                                            <name>/usr/local/bin/sstable-parquet-transformer</name>
-                                            <file>${project.basedir}/bin/sstable-parquet-transformer</file>
+                                            <name>/usr/local/bin/sstable-transformer</name>
+                                            <file>${project.basedir}/bin/sstable-transformer</file>
                                             <mode>0755</mode>
                                         </entry>
                                     </entries>

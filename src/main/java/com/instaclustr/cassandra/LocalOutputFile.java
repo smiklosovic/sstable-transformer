@@ -18,6 +18,8 @@
  */
 package com.instaclustr.cassandra;
 
+import com.instaclustr.cassandra.TransformerOptions.OutputFormat;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -29,21 +31,21 @@ public class LocalOutputFile extends AbstractOutputFile<LocalOutputFile>
 {
     private final Path path;
 
-    public LocalOutputFile(String path)
+    public LocalOutputFile(OutputFormat outputFormat, String path)
     {
-        this(Paths.get(path), 1);
+        this(outputFormat, Paths.get(path), 1);
     }
 
-    public LocalOutputFile(Path path, int number)
+    private LocalOutputFile(OutputFormat outputFormat, Path path, int number)
     {
-        super(path, number);
+        super(outputFormat, path, number);
         this.path = resolvePath();
     }
 
     @Override
     public LocalOutputFile next()
     {
-        return new LocalOutputFile(getInternalPath(), nextNumber());
+        return new LocalOutputFile(getOutputFormat(), getInternalPath(), nextNumber());
     }
 
     @Override
@@ -60,6 +62,9 @@ public class LocalOutputFile extends AbstractOutputFile<LocalOutputFile>
 
     private Path resolvePath()
     {
-        return Paths.get(getInternalPath().toAbsolutePath().toString().replace(".parquet", "-" + getNumber() + ".parquet"));
+        return Paths.get(getInternalPath().toAbsolutePath()
+                                 .toString()
+                                 .replace(getOutputFormat().getFileExtension(),
+                                          "-" + getNumber() + getOutputFormat().getFileExtension()));
     }
 }

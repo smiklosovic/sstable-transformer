@@ -18,6 +18,7 @@
  */
 package com.instaclustr.cassandra;
 
+import com.instaclustr.cassandra.TransformerOptions.OutputFormat;
 import org.apache.avro.Schema;
 import org.apache.cassandra.spark.sparksql.SparkRowIterator;
 import org.apache.spark.sql.avro.SchemaConverters;
@@ -82,14 +83,14 @@ public class DataLayerReader
 
         protected final List<AbstractOutputFile<?>> outputFiles = new ArrayList<>();
         protected final DataLayerWrapper dataLayerWrapper;
-        private final TransformerOptions options;
+        protected final TransformerOptions options;
         private final Schema avroSchema;
         protected final long maxRowsPerFile;
         protected final StructType structType;
 
         protected int count = 0;
         protected long start = currentTimeMillis();
-        protected ParquetRowWriter parquetRowWriter;
+        protected GenericRowWriter rowWriter;
 
         protected RowsWriter(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
         {
@@ -103,7 +104,7 @@ public class DataLayerReader
                                                      "root",
                                                      SSTableToParquetTransformer.class.getCanonicalName());
 
-            switchWriter(dataLayerWrapper.currentDestination());
+            switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
         }
 
         public List<AbstractOutputFile<?>> write()
@@ -123,8 +124,8 @@ public class DataLayerReader
             {
                 try
                 {
-                    if (parquetRowWriter != null)
-                        parquetRowWriter.close();
+                    if (rowWriter != null)
+                        rowWriter.close();
                 }
                 catch (Exception ex)
                 {
@@ -148,7 +149,7 @@ public class DataLayerReader
             return currentTimeMillis();
         }
 
-        protected void switchWriter(AbstractOutputFile<?> destination)
+        protected void switchWriter(AbstractOutputFile<?> destination, OutputFormat outputFormat)
         {
             if (!destination.canWrite())
                 throw new IllegalStateException("Can not write to " + destination.getPath());
@@ -157,10 +158,22 @@ public class DataLayerReader
             {
                 close();
 
-                parquetRowWriter = new ParquetRowWriter(dataLayerWrapper.getDataLayer(),
-                                                        avroSchema,
-                                                        destination,
-                                                        options);
+                switch (outputFormat)
+                {
+                    case AVRO:
+                        rowWriter = new AvroRowWriter(dataLayerWrapper.getDataLayer(),
+                                                      avroSchema,
+                                                      destination);
+                        break;
+                    case PARQUET:
+                        rowWriter = new ParquetRowWriter(dataLayerWrapper.getDataLayer(),
+                                                         avroSchema,
+                                                         destination,
+                                                         options);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unsupported output format " + outputFormat.name());
+                }
             }
             catch (Throwable t)
             {
@@ -171,11 +184,12 @@ public class DataLayerReader
         @Override
         public void close()
         {
-            if (parquetRowWriter != null)
+            if (rowWriter != null)
             {
                 try
                 {
-                    parquetRowWriter.close();
+                    rowWriter.close();
+                    rowWriter = null;
                 }
                 catch (Throwable t)
                 {
@@ -206,12 +220,12 @@ public class DataLayerReader
 
                     dataLayerWrapper.currentDestination().setRows(count);
                     AbstractOutputFile<?> nextDestination = dataLayerWrapper.getNextDestination();
-                    switchWriter(nextDestination);
+                    switchWriter(nextDestination, options.outputFormat);
                     outputFiles.add(nextDestination);
                     count = 0;
                 }
 
-                parquetRowWriter.accept(iterator.get());
+                rowWriter.accept(iterator.get());
                 count++;
             }
 
@@ -237,8 +251,15 @@ public class DataLayerReader
         {
             LinkedList<InternalRow> rows = new LinkedList<>();
 
+            boolean shouldSwitch = false;
+
             while (iterator.next())
             {
+                if (shouldSwitch)
+                {
+                    switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
+                    shouldSwitch = false;
+                }
                 InternalRow row = iterator.get();
                 rows.addFirst(row);
                 count++;
@@ -251,11 +272,17 @@ public class DataLayerReader
                                           currentTimeMillis());
 
                     dataLayerWrapper.currentDestination().setRows(count);
-                    AbstractOutputFile<?> nextDestination = dataLayerWrapper.getNextDestination();
-                    switchWriter(nextDestination);
-                    outputFiles.add(nextDestination);
+                    outputFiles.add(dataLayerWrapper.getNextDestination());
                     count = 0;
+                    shouldSwitch = true;
                 }
+            }
+
+            if (shouldSwitch && !rows.isEmpty())
+            {
+                dataLayerWrapper.currentDestination().setRows(count);
+                outputFiles.add(dataLayerWrapper.getNextDestination());
+                switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
             }
 
             sortAndWrite(rows);
@@ -268,7 +295,7 @@ public class DataLayerReader
         {
             rows.sort(rowComparator);
             for (InternalRow sorted : rows)
-                parquetRowWriter.accept(sorted);
+                rowWriter.accept(sorted);
             rows.clear();
         }
     }

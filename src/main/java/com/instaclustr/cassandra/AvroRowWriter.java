@@ -19,23 +19,24 @@
 package com.instaclustr.cassandra;
 
 import org.apache.avro.Schema;
+import org.apache.avro.file.CodecFactory;
+import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.cassandra.spark.data.DataLayer;
-import org.apache.parquet.avro.AvroParquetWriter;
-import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.types.StructType;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
- * Writes {@link InternalRow} into a Parquet file.
+ * Writes {@link InternalRow} into an Avro file.
  */
-public class ParquetRowWriter extends GenericRowWriter
+public class AvroRowWriter extends GenericRowWriter
 {
-    private final ParquetWriter<GenericRecord> writer;
+    private final DataFileWriter<GenericRecord> writer;
     private final StructType structType;
     private final Schema schema;
     private final AbstractOutputFile<?> destination;
@@ -44,20 +45,16 @@ public class ParquetRowWriter extends GenericRowWriter
      * @param dataLayer   Data layer to use
      * @param schema      Avro schema used for {@link ParquetWriter}.
      * @param destination Initial destination to write data to.
-     * @param options     Transformation options
      * @throws IOException if anything IO-related goes wrong
      */
-    public ParquetRowWriter(DataLayer dataLayer,
-                            Schema schema,
-                            AbstractOutputFile<?> destination,
-                            TransformerOptions options) throws IOException
+    public AvroRowWriter(DataLayer dataLayer,
+                         Schema schema,
+                         AbstractOutputFile<?> destination) throws IOException
     {
         this.structType = dataLayer.structType();
-        this.schema = schema;
         this.destination = destination;
-        writer = createWriter(this.destination,
-                              options.bloomFilterEnabled,
-                              options.compression);
+        this.schema = schema;
+        writer = createWriter();
     }
 
     @Override
@@ -65,25 +62,20 @@ public class ParquetRowWriter extends GenericRowWriter
     {
         try
         {
-            writer.write(convertInternalRowToAvro(row, structType, schema));
+            writer.append(convertInternalRowToAvro(row, structType, schema));
         } catch (Throwable t)
         {
             throw new RuntimeException("Unable to write row", t);
         }
     }
 
-    private ParquetWriter<GenericRecord> createWriter(AbstractOutputFile<?> destination,
-                                                      boolean bloomFilterEnabled,
-                                                      CompressionCodecName compressionCodecName) throws IOException
+    private DataFileWriter<GenericRecord> createWriter() throws IOException
     {
-        return AvroParquetWriter.<GenericRecord>builder(destination)
-                .enablePageWriteChecksum()
-                .enableValidation()
-                .withBloomFilterEnabled(bloomFilterEnabled)
-                .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
-                .withCompressionCodec(compressionCodecName)
-                .withSchema(schema)
-                .build();
+        GenericDatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(schema);
+        DataFileWriter<GenericRecord> writer = new DataFileWriter<>(datumWriter);
+        writer.create(schema, new File(destination.getPath()));
+        writer.setCodec(CodecFactory)
+        return writer;
     }
 
     @Override

@@ -27,9 +27,7 @@ public class DataLayerWrapperBuilders
 {
     public static Collection<LocalDataLayerWrapper> getLocalDataLayers(TransformerOptions options)
     {
-        return new LocalDataLayersBuilder(options.forLocalDataLayer(),
-                                          options.output,
-                                          options.maxRowsPerFile)
+        return new LocalDataLayersBuilder(options)
                 .add(options.input)
                 .strategy(options.transformationStrategy)
                 .build();
@@ -47,8 +45,7 @@ public class DataLayerWrapperBuilders
         return new RemoteDataLayersBuilder(client,
                                            sidecarClient,
                                            ssl,
-                                           options.output,
-                                           options.maxRowsPerFile,
+                                           options,
                                            parsePartitions(options.partitions)).build();
     }
 }

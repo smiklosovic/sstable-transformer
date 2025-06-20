@@ -2,9 +2,9 @@
 
 KEYSPACE="spark_test"
 TABLE="test"
-#CREATE_STATEMENT="CREATE TABLE spark_test.test (id bigint PRIMARY KEY, course blob, marks bigint)"
-CREATE_STATEMENT="CREATE TABLE spark_test.test3 (id int PRIMARY KEY,col1 int,col2 int)"
-INPUT_DIR="$(pwd)/input"
+CREATE_STATEMENT="CREATE TABLE spark_test.test (id bigint PRIMARY KEY, course blob, marks bigint)"
+#CREATE_STATEMENT="CREATE TABLE spark_test.test3 (id int PRIMARY KEY,col1 int,col2 int)"
+INPUT_DIR="$(pwd)/input2"
 OUTPUT_DIR="$(pwd)/output"
 COMPRESSION=ZSTD
 
@@ -15,21 +15,24 @@ JVM_OPTIONS="-DSKIP_STARTUP_VALIDATIONS=true -Dfile.encoding=UTF-8 -Djdk.attach.
 
 # REMOTE TRANSFORMATION
 
-#java ${JVM_OPTIONS} -jar target/sstable-parquet-transformer-1.0.0-SNAPSHOT-bundled.jar sstable2parquet \
+#java ${JVM_OPTIONS} -jar target/sstable-transformer-1.0.0-SNAPSHOT-bundled.jar transform \
 #  --keyspace=${KEYSPACE} \
 #  --table=${TABLE} \
 #  --compression="${COMPRESSION}" \
 #  --output="${OUTPUT_DIR}" \
-#  --max-rows-per-parquet-file=100000 \
+#  --max-rows-per-file=100000 \
 #  --sidecar spark-master-1:9043 --sidecar cassandra-node-1:9043 --sidecar cassandra-node-2:9043 #--partitions=1..20
 
 # LOCAL TRANSFORMATION
 
-# USE --strategy=ONE_PARQUET_PER_SSTABLE when you do not want to compact
+# USE --strategy=ONE_FILE_PER_SSTABLE when you do not want to compact
 
-java ${JVM_OPTIONS} -jar target/sstable-parquet-transformer-1.0.0-SNAPSHOT-bundled.jar sstable2parquet \
+java ${JVM_OPTIONS} -jar target/sstable-transformer-1.0.0-SNAPSHOT-bundled.jar transform \
   --create-table-statement="${CREATE_STATEMENT}" \
   --compression="${COMPRESSION}" \
   --output="${OUTPUT_DIR}" \
   --input="${INPUT_DIR}" \
-  --strategy=ONE_PARQUET_ALL_SSTABLES
+  --strategy=ONE_FILE_ALL_SSTABLES \
+  --sorted \
+  --max-rows-per-file=1000000 \
+  --output-format=PARQUET

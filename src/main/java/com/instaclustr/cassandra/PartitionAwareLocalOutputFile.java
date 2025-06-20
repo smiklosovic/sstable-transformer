@@ -19,6 +19,7 @@
 package com.instaclustr.cassandra;
 
 import com.google.common.collect.Range;
+import com.instaclustr.cassandra.TransformerOptions.OutputFormat;
 
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -36,14 +37,19 @@ public class PartitionAwareLocalOutputFile extends AbstractOutputFile<PartitionA
     private final Range<BigInteger> tokenRange;
 
     /**
-     * @param path       path to a file
-     * @param tokenRange token range, in Cassandra's terms, this file will be holding data of
-     * @param partition  Spark partition this file is of
-     * @param number     ever-increasing number appended to the end of a filename in case previous file is full.
+     * @param outputFormat format to use for writing
+     * @param path         path to a file
+     * @param tokenRange   token range, in Cassandra's terms, this file will be holding data of
+     * @param partition    Spark partition this file is of
+     * @param number       ever-increasing number appended to the end of a filename in case previous file is full.
      */
-    public PartitionAwareLocalOutputFile(Path path, Range<BigInteger> tokenRange, int partition, int number)
+    public PartitionAwareLocalOutputFile(OutputFormat outputFormat,
+                                         Path path,
+                                         Range<BigInteger> tokenRange,
+                                         int partition,
+                                         int number)
     {
-        super(path, number);
+        super(outputFormat, path, number);
         this.partition = partition;
         this.tokenRange = tokenRange;
         this.path = resolvePath();
@@ -52,7 +58,11 @@ public class PartitionAwareLocalOutputFile extends AbstractOutputFile<PartitionA
     @Override
     public PartitionAwareLocalOutputFile next()
     {
-        return new PartitionAwareLocalOutputFile(getInternalPath(), tokenRange, partition, nextNumber());
+        return new PartitionAwareLocalOutputFile(getOutputFormat(),
+                                                 getInternalPath(),
+                                                 tokenRange,
+                                                 partition,
+                                                 nextNumber());
     }
 
     @Override
@@ -73,9 +83,15 @@ public class PartitionAwareLocalOutputFile extends AbstractOutputFile<PartitionA
 
     private Path resolvePath()
     {
-        String suffix = String.format("_%s_%s-%s-%s.parquet", tokenRange.lowerEndpoint(), tokenRange.upperEndpoint(), partition, getNumber());
+        String fileExtension = getOutputFormat().getFileExtension();
+        String suffix = String.format("_%s_%s-%s-%s%s",
+                                      tokenRange.lowerEndpoint(),
+                                      tokenRange.upperEndpoint(),
+                                      partition,
+                                      getNumber(),
+                                      fileExtension);
         String toReplaceIn = getInternalPath().toAbsolutePath().toString();
-        String replaced = toReplaceIn.replaceAll("\\.parquet", suffix);
+        String replaced = toReplaceIn.replace(fileExtension, suffix);
         return Paths.get(replaced);
     }
 }

@@ -45,48 +45,50 @@ public class RemoteDataLayersBuilder extends AbstractDataLayersBuilder
     private final CassandraDataLayer dataLayer;
     private final String output;
     private final List<Integer> partitions;
+    private final TransformerOptions.OutputFormat outputFormat;
 
     /**
      * @param clientConfigMap        configuration for client
      * @param sidecarClientConfigMap configuration for sidecars
      * @param sslSecretsConfigMap    configuration for SSL for sidecars
-     * @param output                 initial destination to write data to
-     * @param maxRowsPerParquetFile  maximum number of rows per Parquet file
+     * @param options                options
      * @param partition              Spark partition to transform
      */
     public RemoteDataLayersBuilder(Map<String, String> clientConfigMap,
                                    Map<String, String> sidecarClientConfigMap,
                                    @Nullable Map<String, String> sslSecretsConfigMap,
-                                   String output,
-                                   long maxRowsPerParquetFile,
+                                   TransformerOptions options,
                                    int partition)
     {
-        this(clientConfigMap, sidecarClientConfigMap, sslSecretsConfigMap, output, maxRowsPerParquetFile, List.of(partition));
+        this(clientConfigMap,
+             sidecarClientConfigMap,
+             sslSecretsConfigMap,
+             options,
+             List.of(partition));
     }
 
     /**
      * @param clientConfigMap        configuration for client
      * @param sidecarClientConfigMap configuration for sidecars
      * @param sslSecretsConfigMap    configuration for SSL for sidecars
-     * @param output                 initial destination to write data to
-     * @param maxRowsPerParquetFile  maximum number of rows per Parquet file
+     * @param options                options
      * @param partitions             Spark partitions to transform
      */
     public RemoteDataLayersBuilder(Map<String, String> clientConfigMap,
                                    Map<String, String> sidecarClientConfigMap,
                                    @Nullable Map<String, String> sslSecretsConfigMap,
-                                   String output,
-                                   long maxRowsPerParquetFile,
+                                   TransformerOptions options,
                                    List<Integer> partitions)
     {
-        super(maxRowsPerParquetFile);
+        super(options.maxRowsPerFile);
         ClientConfig clientConf = ClientConfig.create(clientConfigMap);
         Sidecar.ClientConfig sidecarClientConfig = Sidecar.ClientConfig.create(sidecarClientConfigMap);
         SslConfig sslConfig = sslSecretsConfigMap != null ? SslConfig.create(sslSecretsConfigMap) : SslConfig.create(Map.of());
         CassandraDataLayer dataLayer = new CassandraDataLayer(clientConf, sidecarClientConfig, sslConfig);
         dataLayer.initialize(clientConf);
         this.dataLayer = dataLayer;
-        this.output = output;
+        this.output = options.output;
+        this.outputFormat = options.outputFormat;
         this.partitions = partitions.isEmpty() ? getDataLayerPartitions() : partitions;
         validatePartitions();
     }
@@ -125,9 +127,10 @@ public class RemoteDataLayersBuilder extends AbstractDataLayersBuilder
     private PartitionAwareLocalOutputFile getOutputFile(String output, Range<BigInteger> tokenRange, int partition)
     {
         Path outputPath = Paths.get(output);
+        String fileExtension = outputFormat.getFileExtension();
         if (outputPath.toFile().isDirectory())
-            return new PartitionAwareLocalOutputFile(outputPath.resolve(UUID.randomUUID() + ".parquet"), tokenRange, partition, 0);
+            return new PartitionAwareLocalOutputFile(outputFormat, outputPath.resolve(UUID.randomUUID() + fileExtension), tokenRange, partition, 0);
         else
-            return new PartitionAwareLocalOutputFile(outputPath, tokenRange, partition, 0);
+            return new PartitionAwareLocalOutputFile(outputFormat, outputPath, tokenRange, partition, 0);
     }
 }
