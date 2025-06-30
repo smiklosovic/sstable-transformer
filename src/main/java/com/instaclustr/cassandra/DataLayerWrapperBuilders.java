@@ -39,7 +39,7 @@ public class DataLayerWrapperBuilders
             throw new TransformerException("Sidecar list can not be empty for remote reading.");
 
         Map<String, String> client = options.forRemoteDataLayer();
-        Map<String, String> sidecarClient = Map.of();
+        Map<String, String> sidecarClient = Map.of("sidecar_port", options.extractPortOfFirstSidecar());
         Map<String, String> ssl = Map.of();
 
         return new RemoteDataLayersBuilder(client,

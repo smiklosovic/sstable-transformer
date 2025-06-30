@@ -126,6 +126,12 @@ public abstract class AbstractOutputFile<T extends AbstractOutputFile<T>> implem
         return rows;
     }
 
+    @Override
+    public String toString()
+    {
+        return getPath();
+    }
+
     private static class PositionOutputStreamWrapper extends PositionOutputStream
     {
         private final OutputStream out;

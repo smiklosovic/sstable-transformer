@@ -301,6 +301,11 @@ public class TransformerOptions implements Serializable
                       "createsnapshot", "true");
     }
 
+    public String extractPortOfFirstSidecar()
+    {
+        return forRemoteDataLayer().get("sidecar_contact_points").split(":")[1];
+    }
+
     public Map<String, String> forLocalDataLayer()
     {
         Map<String, String> map = new HashMap<>();
