@@ -293,12 +293,17 @@ public class TransformerOptions implements Serializable
                     "sorting will be limited to number of rows per that option only.")
     public boolean sorted;
 
+    @Option(names = {"--keep-snapshot"},
+            description = "Flag for telling whether we should keep snapshot used for remote transformation.")
+    public boolean keepSnapshot;
+
     public Map<String, String> forRemoteDataLayer()
     {
         return Map.of("sidecar_contact_points", parseSidecars(),
                       "keyspace", keyspace,
                       "table", table,
-                      "createsnapshot", "true");
+                      "createsnapshot", "true",
+                      "clearsnapshot", Boolean.toString(!keepSnapshot));
     }
 
     public String extractPortOfFirstSidecar()

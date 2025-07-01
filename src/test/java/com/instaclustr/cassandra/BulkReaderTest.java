@@ -63,7 +63,7 @@ class BulkReaderTest extends SharedClusterSparkIntegrationTestBase
     protected ClusterBuilderConfiguration testClusterConfiguration()
     {
         return super.testClusterConfiguration()
-                    .nodesPerDc(2);
+                .nodesPerDc(2);
     }
 
     @Test
@@ -72,8 +72,8 @@ class BulkReaderTest extends SharedClusterSparkIntegrationTestBase
         Dataset<Row> data = bulkReaderDataFrame(table1).option("SIZING", "dynamic").load();
 
         List<Row> rows = data.collectAsList().stream()
-                             .sorted(Comparator.comparing(row -> row.getInt(0)))
-                             .collect(Collectors.toList());
+                .sorted(Comparator.comparing(row -> row.getInt(0)))
+                .collect(Collectors.toList());
         assertThat(rows.size()).isEqualTo(DATASET.size());
     }
 
@@ -81,8 +81,8 @@ class BulkReaderTest extends SharedClusterSparkIntegrationTestBase
     void failsOnInvalidSizingOption()
     {
         assertThatRuntimeException().isThrownBy(() -> bulkReaderDataFrame(tableForNullStaticColumn).option("SIZING", "invalid")
-                                                                                                   .load())
-                                    .withMessageContaining("Invalid sizing option provided 'invalid'");
+                        .load())
+                .withMessageContaining("Invalid sizing option provided 'invalid'");
     }
 
     @Test
@@ -91,8 +91,8 @@ class BulkReaderTest extends SharedClusterSparkIntegrationTestBase
         Dataset<Row> data = bulkReaderDataFrame(tableForNullStaticColumn).load();
 
         List<Row> rows = data.collectAsList().stream()
-                             .sorted(Comparator.comparing(row -> row.getString(0)))
-                             .collect(Collectors.toList());
+                .sorted(Comparator.comparing(row -> row.getString(0)))
+                .collect(Collectors.toList());
         assertThat(rows.size()).isEqualTo(DATASET.size());
 
         for (int i = 0; i < DATASET.size(); i++)
@@ -121,12 +121,12 @@ class BulkReaderTest extends SharedClusterSparkIntegrationTestBase
         assertThat(dataForTable2.count()).isEqualTo(DATASET.size());
 
         List<Row> rowList1 = dataForTable1.collectAsList().stream()
-                                          .sorted(Comparator.comparing(row -> row.getInt(0)))
-                                          .collect(Collectors.toList());
+                .sorted(Comparator.comparing(row -> row.getInt(0)))
+                .collect(Collectors.toList());
 
         List<Row> rowList2 = dataForTable2.collectAsList().stream()
-                                          .sorted(Comparator.comparing(row -> row.getLong(1)))
-                                          .collect(Collectors.toList());
+                .sorted(Comparator.comparing(row -> row.getLong(1)))
+                .collect(Collectors.toList());
 
         for (int i = 0; i < DATASET.size(); i++)
         {
@@ -141,17 +141,17 @@ class BulkReaderTest extends SharedClusterSparkIntegrationTestBase
     void testUsingSingleSidecarContactPoint()
     {
         String singleSidecar = SparkTestUtils.sidecarInstancesOptionStream(cluster, dnsResolver)
-                                             .limit(1)
-                                             .collect(Collectors.joining());
+                .limit(1)
+                .collect(Collectors.joining());
         assertThat(cluster.size()).isEqualTo(2);
         assertThat(singleSidecar.contains(","))
-        .describedAs("should not contain the separator ',' as it should have one single contact point")
-        .isFalse();
+                .describedAs("should not contain the separator ',' as it should have one single contact point")
+                .isFalse();
         Dataset<Row> data = bulkReaderDataFrame(table1, Collections.singletonMap("sidecar_contact_points", singleSidecar)).load();
 
         List<Row> rows = data.collectAsList().stream()
-                             .sorted(Comparator.comparing(row -> row.getInt(0)))
-                             .collect(Collectors.toList());
+                .sorted(Comparator.comparing(row -> row.getInt(0)))
+                .collect(Collectors.toList());
         assertThat(rows.size()).isEqualTo(DATASET.size());
     }
 
@@ -162,7 +162,7 @@ class BulkReaderTest extends SharedClusterSparkIntegrationTestBase
         createTestTable(table1, "CREATE TABLE IF NOT EXISTS %s (id int PRIMARY KEY, name text);");
         createTestTable(table2, "CREATE TABLE IF NOT EXISTS %s (name text PRIMARY KEY, value bigint);");
         createTestTable(tableForNullStaticColumn, "CREATE TABLE %s (id text, timestamp timestamp,\n" +
-                                                  "   timestamp_static timestamp static, PRIMARY KEY (id, timestamp));");
+                "   timestamp_static timestamp static, PRIMARY KEY (id, timestamp));");
 
         IInstance firstRunningInstance = cluster.getFirstRunningInstance();
         for (int i = 0; i < DATASET.size(); i++)

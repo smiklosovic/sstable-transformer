@@ -112,6 +112,6 @@ public class RemoteTransformationTest extends SharedClusterSparkIntegrationTestB
     @Override
     protected ClusterBuilderConfiguration testClusterConfiguration()
     {
-        return super.testClusterConfiguration().tokenCount(16).nodesPerDc(1);
+        return super.testClusterConfiguration().nodesPerDc(1);
     }
 }
