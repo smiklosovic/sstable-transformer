@@ -27,7 +27,7 @@ public class RemoteTransformationTest extends SharedClusterSparkIntegrationTestB
 {
     static
     {
-        System.setProperty("cassandra.sidecar.versions_to_test", "4.0");
+        System.setProperty("cassandra.sidecar.versions_to_test", "4.1");
         System.setProperty("cassandra.test.dtest_jar_path", "dtest-jars");
         System.setProperty("cassandra.integration.sidecar.test.enable_mtls", "false");
         System.setProperty("SKIP_STARTUP_VALIDATIONS", "true");
@@ -40,7 +40,16 @@ public class RemoteTransformationTest extends SharedClusterSparkIntegrationTestB
     @Test
     public void testRemoteTransformationOfPartition(@TempDir Path tmpDir)
     {
-
+        TransformerOptions options = new TransformerOptions();
+        options.sidecar = List.of("127.0.0.1:" + server.actualPort());
+        options.keyspace = TEST_KEYSPACE;
+        options.table = TEST_TABLE_PREFIX;
+        options.transformationStrategy = TransformerOptions.TransformationStrategy.ONE_FILE_ALL_SSTABLES;
+        options.output = tmpDir.toAbsolutePath().toString();
+        options.keepSnapshot = true;
+        SSTableToParquetTransformer transformer = new SSTableToParquetTransformer(options);
+        List<? extends AbstractOutputFile<?>> outputFiles = transformer.runTransformation();
+        System.out.println(outputFiles);
     }
 
     @Test
