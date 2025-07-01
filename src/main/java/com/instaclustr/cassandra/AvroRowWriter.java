@@ -19,7 +19,6 @@
 package com.instaclustr.cassandra;
 
 import org.apache.avro.Schema;
-import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -39,22 +38,24 @@ public class AvroRowWriter extends GenericRowWriter
     private final DataFileWriter<GenericRecord> writer;
     private final StructType structType;
     private final Schema schema;
-    private final AbstractOutputFile<?> destination;
+    private final AbstractFile<?> destination;
 
     /**
      * @param dataLayer   Data layer to use
      * @param schema      Avro schema used for {@link ParquetWriter}.
      * @param destination Initial destination to write data to.
+     * @param options     Transformer options to use
      * @throws IOException if anything IO-related goes wrong
      */
     public AvroRowWriter(DataLayer dataLayer,
                          Schema schema,
-                         AbstractOutputFile<?> destination) throws IOException
+                         AbstractFile<?> destination,
+                         TransformerOptions options) throws IOException
     {
         this.structType = dataLayer.structType();
         this.destination = destination;
         this.schema = schema;
-        writer = createWriter();
+        writer = createWriter(options);
     }
 
     @Override
@@ -63,16 +64,18 @@ public class AvroRowWriter extends GenericRowWriter
         try
         {
             writer.append(convertInternalRowToAvro(row, structType, schema));
-        } catch (Throwable t)
+        }
+        catch (Throwable t)
         {
             throw new RuntimeException("Unable to write row", t);
         }
     }
 
-    private DataFileWriter<GenericRecord> createWriter() throws IOException
+    private DataFileWriter<GenericRecord> createWriter(TransformerOptions options) throws IOException
     {
         GenericDatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(schema);
         DataFileWriter<GenericRecord> writer = new DataFileWriter<>(datumWriter);
+        writer.setCodec(options.compression.forAvro());
         writer.create(schema, new File(destination.getPath()));
         return writer;
     }

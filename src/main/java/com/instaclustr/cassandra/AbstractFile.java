@@ -19,26 +19,32 @@
 package com.instaclustr.cassandra;
 
 import com.instaclustr.cassandra.TransformerOptions.OutputFormat;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
+import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
+import org.apache.parquet.io.SeekableInputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.nio.channels.Channels;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public abstract class AbstractOutputFile<T extends AbstractOutputFile<T>> implements OutputFile
+public abstract class AbstractFile<T extends AbstractFile<T>> implements OutputFile, InputFile
 {
+    private RandomAccessFile file;
     private final OutputFormat outputFormat;
     private final Path internalPath;
     private final int number;
     private boolean finished = false;
     private int rows;
 
-    public AbstractOutputFile(OutputFormat outputFormat,
-                              Path path,
-                              int number)
+    public AbstractFile(OutputFormat outputFormat,
+                        Path path,
+                        int number)
     {
         this.outputFormat = outputFormat;
         this.internalPath = path;
@@ -107,7 +113,7 @@ public abstract class AbstractOutputFile<T extends AbstractOutputFile<T>> implem
     /**
      * A file is considered to be eligible to be written to when it is not finished.
      * <p>
-     * See {@link AbstractOutputFile#finished}.
+     * See {@link AbstractFile#finished}.
      *
      * @return true if we can write to this file, false otherwise.
      */
@@ -124,6 +130,36 @@ public abstract class AbstractOutputFile<T extends AbstractOutputFile<T>> implem
     public int getRows()
     {
         return rows;
+    }
+
+    @Override
+    public long getLength() throws IOException
+    {
+        return Files.size(Paths.get(getPath()));
+    }
+
+    @Override
+    public SeekableInputStream newStream() throws IOException
+    {
+        if (file == null)
+        {
+            file = new RandomAccessFile(getPath(), "r");
+        }
+
+        return new DelegatingSeekableInputStream(Channels.newInputStream(file.getChannel()))
+        {
+            @Override
+            public long getPos() throws IOException
+            {
+                return file.getFilePointer();
+            }
+
+            @Override
+            public void seek(long newPos) throws IOException
+            {
+                file.seek(newPos);
+            }
+        };
     }
 
     @Override

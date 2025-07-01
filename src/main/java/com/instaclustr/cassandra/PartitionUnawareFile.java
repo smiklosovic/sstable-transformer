@@ -27,25 +27,25 @@ import java.nio.file.Paths;
  * Output file for {@link org.apache.cassandra.spark.data.LocalDataLayer} which does not
  * have any concept of partitions or ranges.
  */
-public class LocalOutputFile extends AbstractOutputFile<LocalOutputFile>
+public class PartitionUnawareFile extends AbstractFile<PartitionUnawareFile>
 {
     private final Path path;
 
-    public LocalOutputFile(OutputFormat outputFormat, String path)
+    public PartitionUnawareFile(OutputFormat outputFormat, String path)
     {
         this(outputFormat, Paths.get(path), 1);
     }
 
-    private LocalOutputFile(OutputFormat outputFormat, Path path, int number)
+    private PartitionUnawareFile(OutputFormat outputFormat, Path path, int number)
     {
         super(outputFormat, path, number);
         this.path = resolvePath();
     }
 
     @Override
-    public LocalOutputFile next()
+    public PartitionUnawareFile next()
     {
-        return new LocalOutputFile(getOutputFormat(), getInternalPath(), nextNumber());
+        return new PartitionUnawareFile(getOutputFormat(), getInternalPath(), nextNumber());
     }
 
     @Override

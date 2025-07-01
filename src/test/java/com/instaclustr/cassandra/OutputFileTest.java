@@ -1,4 +1,4 @@
-package com.instaclustr.cassandra;/*
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,6 +16,8 @@ package com.instaclustr.cassandra;/*
  * specific language governing permissions and limitations
  * under the License.
  */
+
+package com.instaclustr.cassandra;
 
 import com.google.common.collect.Range;
 import org.junit.jupiter.api.Test;
@@ -35,7 +37,7 @@ public class OutputFileTest
     public void testLocalOutputFile()
     {
         Path path = Paths.get("/tmp/file.parquet");
-        LocalOutputFile localOutputFile = new LocalOutputFile(PARQUET, path.toString());
+        PartitionUnawareFile localOutputFile = new PartitionUnawareFile(PARQUET, path.toString());
         assertEquals("/tmp/file.parquet", localOutputFile.getInternalPath().toString());
         assertEquals(1, localOutputFile.getNumber());
 
@@ -53,7 +55,7 @@ public class OutputFileTest
     {
         Path path = Paths.get("/tmp/file.parquet");
         Range<BigInteger> range = Range.range(new BigInteger("123"), OPEN, new BigInteger("456"), CLOSED);
-        PartitionAwareLocalOutputFile localOutputFile = new PartitionAwareLocalOutputFile(PARQUET, path, range, 10, 1);
+        PartitionAwareFile localOutputFile = new PartitionAwareFile(PARQUET, path, range, 10, 1);
 
         assertEquals("/tmp/file.parquet", localOutputFile.getInternalPath().toString());
         assertEquals(10, localOutputFile.getPartition());
@@ -61,7 +63,7 @@ public class OutputFileTest
         assertEquals(range, localOutputFile.getTokenRange());
         assertEquals("/tmp/file_123_456-10-1.parquet", localOutputFile.getPath());
 
-        PartitionAwareLocalOutputFile next = localOutputFile.next();
+        PartitionAwareFile next = localOutputFile.next();
         assertEquals("/tmp/file.parquet", next.getInternalPath().toString());
         assertEquals(10, next.getPartition());
         assertEquals(2, next.getNumber());

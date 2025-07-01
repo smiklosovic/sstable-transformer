@@ -24,7 +24,6 @@ import org.apache.cassandra.spark.data.DataLayer;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.types.StructType;
 
@@ -38,7 +37,7 @@ public class ParquetRowWriter extends GenericRowWriter
     private final ParquetWriter<GenericRecord> writer;
     private final StructType structType;
     private final Schema schema;
-    private final AbstractOutputFile<?> destination;
+    private final AbstractFile<?> destination;
 
     /**
      * @param dataLayer   Data layer to use
@@ -49,7 +48,7 @@ public class ParquetRowWriter extends GenericRowWriter
      */
     public ParquetRowWriter(DataLayer dataLayer,
                             Schema schema,
-                            AbstractOutputFile<?> destination,
+                            AbstractFile<?> destination,
                             TransformerOptions options) throws IOException
     {
         this.structType = dataLayer.structType();
@@ -72,16 +71,16 @@ public class ParquetRowWriter extends GenericRowWriter
         }
     }
 
-    private ParquetWriter<GenericRecord> createWriter(AbstractOutputFile<?> destination,
+    private ParquetWriter<GenericRecord> createWriter(AbstractFile<?> destination,
                                                       boolean bloomFilterEnabled,
-                                                      CompressionCodecName compressionCodecName) throws IOException
+                                                      TransformerOptions.Compression compression) throws IOException
     {
         return AvroParquetWriter.<GenericRecord>builder(destination)
                 .enablePageWriteChecksum()
                 .enableValidation()
                 .withBloomFilterEnabled(bloomFilterEnabled)
                 .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
-                .withCompressionCodec(compressionCodecName)
+                .withCompressionCodec(compression.forParquet())
                 .withSchema(schema)
                 .build();
     }

@@ -51,12 +51,12 @@ public class TransformationExecutor implements AutoCloseable
         executor = Executors.newFixedThreadPool(threads);
     }
 
-    public List<? extends AbstractOutputFile<?>> run(Collection<DataLayerTransformer> transformers)
+    public List<? extends AbstractFile<?>> run(Collection<DataLayerTransformer> transformers)
     {
         return waitForCompletion(submit(transformers));
     }
 
-    private List<? extends AbstractOutputFile<?>> waitForCompletion(Collection<CompletableFuture<? extends Collection<? extends AbstractOutputFile<?>>>> futures)
+    private List<? extends AbstractFile<?>> waitForCompletion(Collection<CompletableFuture<? extends Collection<? extends AbstractFile<?>>>> futures)
     {
         try
         {
@@ -71,7 +71,7 @@ public class TransformationExecutor implements AutoCloseable
         }
     }
 
-    private Collection<CompletableFuture<? extends Collection<? extends AbstractOutputFile<?>>>> submit(Collection<DataLayerTransformer> transformers)
+    private Collection<CompletableFuture<? extends Collection<? extends AbstractFile<?>>>> submit(Collection<DataLayerTransformer> transformers)
     {
         if (executor.isShutdown())
             throw new IllegalStateException("Executor is shut down");

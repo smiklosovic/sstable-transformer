@@ -41,7 +41,7 @@ public class DataLayerTransformer
      *
      * @return list of Parquet files which were created by transformation.
      */
-    public Collection<? extends AbstractOutputFile<?>> transform()
+    public Collection<? extends AbstractFile<?>> transform()
     {
         try
         {

@@ -65,7 +65,7 @@ public class SSTableToParquetTransformer implements Runnable
      *
      * @return list of files which were created as part of transformation
      */
-    public List<? extends AbstractOutputFile<?>> runTransformation()
+    public List<? extends AbstractFile<?>> runTransformation()
     {
         try (TransformationExecutor executor = new TransformationExecutor(options.parallelism))
         {
@@ -82,9 +82,9 @@ public class SSTableToParquetTransformer implements Runnable
                         .collect(toList());
 
 
-            List<? extends AbstractOutputFile<?>> outputFiles = executor.run(transformers);
+            List<? extends AbstractFile<?>> outputFiles = executor.run(transformers);
 
-            for (AbstractOutputFile<?> outputFile : outputFiles)
+            for (AbstractFile<?> outputFile : outputFiles)
                 logger.info(outputFile.getPath());
 
             return outputFiles;

@@ -1,115 +1,30 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package com.instaclustr.cassandra;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Session;
-import org.apache.cassandra.analytics.SharedClusterSparkIntegrationTestBase;
-import org.apache.cassandra.distributed.api.ICluster;
-import org.apache.cassandra.distributed.api.IInstance;
-import org.apache.cassandra.sidecar.server.Server;
-import org.apache.cassandra.sidecar.testing.QualifiedName;
-import org.apache.cassandra.testing.ClusterBuilderConfiguration;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
-import static org.apache.cassandra.testing.TestUtils.DC1_RF1;
-import static org.apache.cassandra.testing.TestUtils.TEST_KEYSPACE;
-import static org.apache.cassandra.testing.TestUtils.TEST_TABLE_PREFIX;
-import static org.assertj.core.api.Assertions.assertThat;
-
-public class RemoteTransformationTest extends SharedClusterSparkIntegrationTestBase
+public class RemoteTransformationTest extends AbstractTransformationTest
 {
-    static
-    {
-        System.setProperty("cassandra.sidecar.versions_to_test", "4.1");
-        System.setProperty("cassandra.test.dtest_jar_path", "dtest-jars");
-        System.setProperty("cassandra.integration.sidecar.test.enable_mtls", "false");
-        System.setProperty("SKIP_STARTUP_VALIDATIONS", "true");
-    }
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(RemoteTransformationTest.class);
-
-    private final List<Server> sidecarServerList = new ArrayList<>();
-
-    @Test
-    public void testRemoteTransformationOfPartition(@TempDir Path tmpDir)
-    {
-        TransformerOptions options = new TransformerOptions();
-        options.sidecar = List.of("127.0.0.1:" + server.actualPort());
-        options.keyspace = TEST_KEYSPACE;
-        options.table = TEST_TABLE_PREFIX;
-        options.transformationStrategy = TransformerOptions.TransformationStrategy.ONE_FILE_ALL_SSTABLES;
-        options.output = tmpDir.toAbsolutePath().toString();
-        options.keepSnapshot = true;
-        SSTableToParquetTransformer transformer = new SSTableToParquetTransformer(options);
-        List<? extends AbstractOutputFile<?>> outputFiles = transformer.runTransformation();
-        System.out.println(outputFiles);
-    }
-
-    @Test
-    public void testRemoteTransformationOfRing()
-    {
-    }
-
-    @Test
-    public void testRemoteTransformationSortedOutput()
-    {
-
-    }
-
-    @Test
-    public void testRemoteTransformationMaxNumberOfRows()
-    {
-
-    }
-
     @Override
-    protected void initializeSchemaForTest()
+    public TransformerOptions getOptions(Path outPutDir)
     {
-        createTestKeyspace(TEST_KEYSPACE, DC1_RF1);
-        createTestTable(new QualifiedName(TEST_KEYSPACE, TEST_TABLE_PREFIX),
-                        "CREATE TABLE %s (id int primary key)");
-
-        try (Cluster cluster = createDriverCluster(super.cluster))
-        {
-            Session session = cluster.connect();
-            for (int i = 0; i < 10; i++)
-            {
-                session.execute(String.format("INSERT INTO %s.%s (id) values (%s)", TEST_KEYSPACE, TEST_TABLE_PREFIX, i));
-            }
-        }
-    }
-
-    @Override
-    protected void startSidecar(ICluster<? extends IInstance> cluster) throws InterruptedException
-    {
-        for (IInstance instance : cluster)
-        {
-            LOGGER.info("Starting Sidecar instance for Cassandra instance {}",
-                        instance.config().num());
-            Server server = startSidecarWithInstances(Collections.singleton(instance));
-            sidecarServerList.add(server);
-        }
-
-        assertThat(sidecarServerList.size())
-                .as("Each Cassandra Instance will be managed by a single Sidecar instance")
-                .isEqualTo(cluster.size());
-
-        // assign the server to the first instance
-        server = sidecarServerList.get(0);
-    }
-
-    @Override
-    protected ClusterBuilderConfiguration testClusterConfiguration()
-    {
-        return super.testClusterConfiguration()
-                .tokenCount(16)
-                .nodesPerDc(1);
+        return getRemoteOptions(outPutDir);
     }
 }

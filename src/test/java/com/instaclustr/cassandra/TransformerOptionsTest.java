@@ -1,4 +1,4 @@
-package com.instaclustr.cassandra;/*
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,13 +16,14 @@ package com.instaclustr.cassandra;/*
  * specific language governing permissions and limitations
  * under the License.
  */
+package com.instaclustr.cassandra;
 
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 
+import static com.instaclustr.cassandra.TransformerOptions.Compression.ZSTD;
 import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_FILE_ALL_SSTABLES;
 import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_FILE_PER_SSTABLE;
 import static com.instaclustr.cassandra.TransformerOptions.parsePartitions;
@@ -64,7 +65,7 @@ public class TransformerOptionsTest
         assertEquals(ONE_FILE_PER_SSTABLE, options.transformationStrategy);
         assertEquals(-1, options.maxRowsPerFile);
         assertFalse(options.bloomFilterEnabled);
-        assertEquals(CompressionCodecName.ZSTD, options.compression);
+        assertEquals(ZSTD, options.compression);
 
         options.maxRowsPerFile = -100;
         assertThatThrownBy(options::validate).hasMessage("--max-rows-per-file can not be lower than 1");
@@ -73,7 +74,6 @@ public class TransformerOptionsTest
         options.maxRowsPerFile = 10;
         options.validate();
     }
-
 
     @Test
     public void testKeyspaceParsing()

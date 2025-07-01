@@ -30,7 +30,7 @@ import java.nio.file.Paths;
  * <p>
  * The name of a file like this will be in format of: {@code filename-rangeOpen_rangeClose-partition-number.parquet}
  */
-public class PartitionAwareLocalOutputFile extends AbstractOutputFile<PartitionAwareLocalOutputFile>
+public class PartitionAwareFile extends AbstractFile<PartitionAwareFile>
 {
     private final Path path;
     private final int partition;
@@ -43,11 +43,11 @@ public class PartitionAwareLocalOutputFile extends AbstractOutputFile<PartitionA
      * @param partition    Spark partition this file is of
      * @param number       ever-increasing number appended to the end of a filename in case previous file is full.
      */
-    public PartitionAwareLocalOutputFile(OutputFormat outputFormat,
-                                         Path path,
-                                         Range<BigInteger> tokenRange,
-                                         int partition,
-                                         int number)
+    public PartitionAwareFile(OutputFormat outputFormat,
+                              Path path,
+                              Range<BigInteger> tokenRange,
+                              int partition,
+                              int number)
     {
         super(outputFormat, path, number);
         this.partition = partition;
@@ -56,13 +56,13 @@ public class PartitionAwareLocalOutputFile extends AbstractOutputFile<PartitionA
     }
 
     @Override
-    public PartitionAwareLocalOutputFile next()
+    public PartitionAwareFile next()
     {
-        return new PartitionAwareLocalOutputFile(getOutputFormat(),
-                                                 getInternalPath(),
-                                                 tokenRange,
-                                                 partition,
-                                                 nextNumber());
+        return new PartitionAwareFile(getOutputFormat(),
+                                      getInternalPath(),
+                                      tokenRange,
+                                      partition,
+                                      nextNumber());
     }
 
     @Override

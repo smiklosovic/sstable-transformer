@@ -18,6 +18,7 @@
  */
 package com.instaclustr.cassandra;
 
+import org.apache.avro.file.CodecFactory;
 import org.apache.cassandra.bridge.CassandraVersion;
 import org.apache.cassandra.spark.data.partitioner.Partitioner;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -41,6 +42,7 @@ import java.util.stream.IntStream;
 
 import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_FILE_ALL_SSTABLES;
 import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_FILE_PER_SSTABLE;
+import static java.lang.String.format;
 
 public class TransformerOptions implements Serializable
 {
@@ -86,7 +88,7 @@ public class TransformerOptions implements Serializable
         private String output;
         private final Set<String> sidecars = new HashSet<>();
         private String partitions;
-        private CompressionCodecName compression = CompressionCodecName.ZSTD;
+        private Compression compression = Compression.ZSTD;
         private boolean bloomFilterEnabled;
         private long maxRowsPerFile = -1;
         private int parallelism = Runtime.getRuntime().availableProcessors();
@@ -155,7 +157,7 @@ public class TransformerOptions implements Serializable
             return this;
         }
 
-        public Builder compression(CompressionCodecName compression)
+        public Builder compression(Compression compression)
         {
             this.compression = compression;
             return this;
@@ -257,9 +259,172 @@ public class TransformerOptions implements Serializable
     public List<String> sidecar = new ArrayList<>();
 
     @Option(names = {"--compression"},
-            description = "Use compression for output Parquet files. " +
-                    "Can be one of ZSTD, LZ4, BROTLI, LZO, GZIP, SNAPPY, UNCOMPRESSED. Defaults to ZSTD.")
-    public CompressionCodecName compression = CompressionCodecName.ZSTD;
+            description = "Use compression for output files, it can be UNCOMPRESSED, SNAPPY, ZSTD.")
+    public Compression compression = Compression.ZSTD;
+
+    public enum Compression
+    {
+        UNCOMPRESSED(true, true)
+        {
+            @Override
+            CodecFactory forAvro()
+            {
+                return CodecFactory.nullCodec();
+            }
+
+            @Override
+            CompressionCodecName forParquet()
+            {
+                return CompressionCodecName.UNCOMPRESSED;
+            }
+        },
+//        GZIP(true, false)
+//        {
+//            @Override
+//            CodecFactory forAvro()
+//            {
+//                throw new UnsupportedOperationException();
+//            }
+//
+//            @Override
+//            CompressionCodecName forParquet()
+//            {
+//                return CompressionCodecName.GZIP;
+//            }
+//        },
+//        LZ4(true, false)
+//        {
+//            @Override
+//            CodecFactory forAvro()
+//            {
+//                throw new UnsupportedOperationException();
+//            }
+//
+//            @Override
+//            CompressionCodecName forParquet()
+//            {
+//                return CompressionCodecName.LZ4;
+//            }
+//        },
+//        LZO(true, false)
+//        {
+//            @Override
+//            CodecFactory forAvro()
+//            {
+//                throw new UnsupportedOperationException();
+//            }
+//
+//            @Override
+//            CompressionCodecName forParquet()
+//            {
+//                return CompressionCodecName.LZO;
+//            }
+//        },
+//        BZIP(false, true)
+//        {
+//            @Override
+//            CodecFactory forAvro()
+//            {
+//                return CodecFactory.bzip2Codec();
+//            }
+//
+//            @Override
+//            CompressionCodecName forParquet()
+//            {
+//                throw new UnsupportedOperationException();
+//            }
+//        },
+//        DEFLATE(false, true)
+//        {
+//            @Override
+//            CodecFactory forAvro()
+//            {
+//                return CodecFactory.deflateCodec(Deflater.BEST_COMPRESSION);
+//            }
+//
+//            @Override
+//            CompressionCodecName forParquet()
+//            {
+//                throw new UnsupportedOperationException();
+//            }
+//        },
+        SNAPPY(true, true)
+        {
+            @Override
+            CodecFactory forAvro()
+            {
+                return CodecFactory.snappyCodec();
+            }
+
+            @Override
+            CompressionCodecName forParquet()
+            {
+                return CompressionCodecName.SNAPPY;
+            }
+        },
+//        XZ(false, true)
+//        {
+//            @Override
+//            CodecFactory forAvro()
+//            {
+//                return CodecFactory.xzCodec(XZCodec.DEFAULT_COMPRESSION);
+//            }
+//
+//            @Override
+//            CompressionCodecName forParquet()
+//            {
+//                throw new UnsupportedOperationException();
+//            }
+//        },
+        ZSTD(true, true)
+        {
+            @Override
+            CodecFactory forAvro()
+            {
+                return CodecFactory.zstandardCodec(CodecFactory.DEFAULT_ZSTANDARD_LEVEL, true);
+            }
+
+            @Override
+            CompressionCodecName forParquet()
+            {
+                return CompressionCodecName.ZSTD;
+            }
+        };
+
+        final boolean forParquet;
+        final boolean forAvro;
+
+        Compression(boolean forParquet, boolean forAvro)
+        {
+            this.forParquet = forParquet;
+            this.forAvro = forAvro;
+        }
+
+        abstract CodecFactory forAvro();
+
+        abstract CompressionCodecName forParquet();
+
+        public void validate(OutputFormat outputFormat)
+        {
+            if ((outputFormat == OutputFormat.PARQUET && !forParquet)
+                    || (outputFormat == OutputFormat.AVRO && !forAvro))
+            {
+                throw new IllegalArgumentException(format("%s compression can not be used for %s output format.",
+                                                          name(), outputFormat));
+            }
+        }
+
+        public static Compression[] getAllForParquet()
+        {
+            return Arrays.stream(Compression.values()).filter(c -> c.forParquet).toArray(Compression[]::new);
+        }
+
+        public static Compression[] getAllForAvro()
+        {
+            return Arrays.stream(Compression.values()).filter(c -> c.forAvro).toArray(Compression[]::new);
+        }
+    }
+
 
     @Option(names = {"--bloom-filter"},
             description = "Flag for telling whether bloom filter should be used upon writing of a Parquet file.")
@@ -451,6 +616,8 @@ public class TransformerOptions implements Serializable
 
         if (parallelism < 1)
             throw new IllegalArgumentException("Number of threads can not be lower than 1.");
+
+        compression.validate(outputFormat);
     }
 
     public DataLayerLocation resolveDataLayerLocation()

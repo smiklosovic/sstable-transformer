@@ -31,7 +31,7 @@ public class LocalDataLayerWrapper extends DataLayerWrapper
      * @param destination initial destination to write data to.
      * @param maxRowsPerParquetFile maximum number of rows an individual file can hold.
      */
-    public LocalDataLayerWrapper(LocalDataLayer dataLayer, LocalOutputFile destination, long maxRowsPerParquetFile)
+    public LocalDataLayerWrapper(LocalDataLayer dataLayer, PartitionUnawareFile destination, long maxRowsPerParquetFile)
     {
         super(destination, maxRowsPerParquetFile);
         this.dataLayer = dataLayer;

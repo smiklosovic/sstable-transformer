@@ -40,7 +40,7 @@ public class RemoteDataLayerWrapper extends DataLayerWrapper
      */
     public RemoteDataLayerWrapper(CassandraDataLayer dataLayer,
                                   int partition,
-                                  PartitionAwareLocalOutputFile destination,
+                                  PartitionAwareFile destination,
                                   long maxRowsPerParquetFile)
     {
         super(destination, maxRowsPerParquetFile);

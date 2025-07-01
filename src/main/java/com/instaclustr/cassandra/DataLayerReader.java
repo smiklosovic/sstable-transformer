@@ -61,7 +61,7 @@ public class DataLayerReader
         this.options = options;
     }
 
-    public Collection<? extends AbstractOutputFile<?>> read()
+    public Collection<? extends AbstractFile<?>> read()
     {
         try (RowsWriter rowsWriter = resolveRowsWriter(options))
         {
@@ -81,7 +81,7 @@ public class DataLayerReader
     {
         private static final Logger logger = LoggerFactory.getLogger(RowsWriter.class);
 
-        protected final List<AbstractOutputFile<?>> outputFiles = new ArrayList<>();
+        protected final List<AbstractFile<?>> outputFiles = new ArrayList<>();
         protected final DataLayerWrapper dataLayerWrapper;
         protected final TransformerOptions options;
         private final Schema avroSchema;
@@ -107,7 +107,7 @@ public class DataLayerReader
             switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
         }
 
-        public List<AbstractOutputFile<?>> write()
+        public List<AbstractFile<?>> write()
         {
             try (SparkRowIterator iterator = new SparkRowIterator(dataLayerWrapper.getPartition(),
                                                                   dataLayerWrapper.getDataLayer(),
@@ -138,7 +138,7 @@ public class DataLayerReader
 
         protected abstract void internalWrite(SparkRowIterator iterator) throws IOException;
 
-        protected long printDuration(AbstractOutputFile<?> outputFile, int count, long start, long end)
+        protected long printDuration(AbstractFile<?> outputFile, int count, long start, long end)
         {
             logger.info("Transformed {} rows to {} in {} seconds.",
                         count,
@@ -149,7 +149,7 @@ public class DataLayerReader
             return currentTimeMillis();
         }
 
-        protected void switchWriter(AbstractOutputFile<?> destination, OutputFormat outputFormat)
+        protected void switchWriter(AbstractFile<?> destination, OutputFormat outputFormat)
         {
             if (!destination.canWrite())
                 throw new IllegalStateException("Can not write to " + destination.getPath());
@@ -163,7 +163,8 @@ public class DataLayerReader
                     case AVRO:
                         rowWriter = new AvroRowWriter(dataLayerWrapper.getDataLayer(),
                                                       avroSchema,
-                                                      destination);
+                                                      destination,
+                                                      options);
                         break;
                     case PARQUET:
                         rowWriter = new ParquetRowWriter(dataLayerWrapper.getDataLayer(),
@@ -219,7 +220,7 @@ public class DataLayerReader
                                           currentTimeMillis());
 
                     dataLayerWrapper.currentDestination().setRows(count);
-                    AbstractOutputFile<?> nextDestination = dataLayerWrapper.getNextDestination();
+                    AbstractFile<?> nextDestination = dataLayerWrapper.getNextDestination();
                     switchWriter(nextDestination, options.outputFormat);
                     outputFiles.add(nextDestination);
                     count = 0;
@@ -261,6 +262,7 @@ public class DataLayerReader
             {
                 if (shouldSwitch)
                 {
+                    outputFiles.add(dataLayerWrapper.getNextDestination());
                     switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
                     shouldSwitch = false;
                 }
@@ -274,9 +276,7 @@ public class DataLayerReader
                                           count,
                                           start,
                                           currentTimeMillis());
-
                     dataLayerWrapper.currentDestination().setRows(count);
-                    outputFiles.add(dataLayerWrapper.getNextDestination());
                     count = 0;
                     shouldSwitch = true;
                 }

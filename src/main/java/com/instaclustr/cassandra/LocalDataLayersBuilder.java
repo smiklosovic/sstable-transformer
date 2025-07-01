@@ -232,7 +232,7 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
      * @param dataPath data path of SSTable DATA component.
      * @return resulting Parquet's OutputFile to write to
      */
-    private LocalOutputFile getOutputFile(String output, Path dataPath)
+    private PartitionUnawareFile getOutputFile(String output, Path dataPath)
     {
         assert !(output == null && dataPath == null) : "both output and data path can not be null at the same time";
 
@@ -240,22 +240,22 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
         String fileExtension = format.fileExtension;
 
         if (output == null)
-            return new LocalOutputFile(format,
-                                       dataPath.toAbsolutePath().toString() + fileExtension);
+            return new PartitionUnawareFile(format,
+                                            dataPath.toAbsolutePath().toString() + fileExtension);
 
         Path outputPath = Paths.get(output);
 
         if (dataPath != null)
         {
             String aFile = dataPath.getFileName().toString() + fileExtension;
-            return new LocalOutputFile(format, outputPath.resolve(aFile).toAbsolutePath().toString());
+            return new PartitionUnawareFile(format, outputPath.resolve(aFile).toAbsolutePath().toString());
         }
         else
         {
             if (outputPath.toFile().isDirectory())
-                return new LocalOutputFile(format, outputPath.resolve(UUID.randomUUID() + fileExtension).toAbsolutePath().toString());
+                return new PartitionUnawareFile(format, outputPath.resolve(UUID.randomUUID() + fileExtension).toAbsolutePath().toString());
             else
-                return new LocalOutputFile(format, output);
+                return new PartitionUnawareFile(format, output);
         }
     }
 }

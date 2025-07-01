@@ -124,13 +124,13 @@ public class RemoteDataLayersBuilder extends AbstractDataLayersBuilder
             throw new IllegalStateException("There are no partitions " + missingPartitions + " in initialized data layer.");
     }
 
-    private PartitionAwareLocalOutputFile getOutputFile(String output, Range<BigInteger> tokenRange, int partition)
+    private PartitionAwareFile getOutputFile(String output, Range<BigInteger> tokenRange, int partition)
     {
         Path outputPath = Paths.get(output);
         String fileExtension = outputFormat.getFileExtension();
         if (outputPath.toFile().isDirectory())
-            return new PartitionAwareLocalOutputFile(outputFormat, outputPath.resolve(UUID.randomUUID() + fileExtension), tokenRange, partition, 0);
+            return new PartitionAwareFile(outputFormat, outputPath.resolve(UUID.randomUUID() + fileExtension), tokenRange, partition, 0);
         else
-            return new PartitionAwareLocalOutputFile(outputFormat, outputPath, tokenRange, partition, 0);
+            return new PartitionAwareFile(outputFormat, outputPath, tokenRange, partition, 0);
     }
 }

@@ -25,10 +25,10 @@ import org.apache.cassandra.spark.data.DataLayer;
  */
 public abstract class DataLayerWrapper
 {
-    private AbstractOutputFile<?> destination;
+    private AbstractFile<?> destination;
     private final long maxRowsPerParquetFile;
 
-    public DataLayerWrapper(AbstractOutputFile<?> destination, long maxRowsPerParquetFile)
+    public DataLayerWrapper(AbstractFile<?> destination, long maxRowsPerParquetFile)
     {
         this.destination = destination;
         this.maxRowsPerParquetFile = maxRowsPerParquetFile;
@@ -41,7 +41,7 @@ public abstract class DataLayerWrapper
      *
      * @return new file to write to
      */
-    public AbstractOutputFile<?> getNextDestination()
+    public AbstractFile<?> getNextDestination()
     {
         setNextDestination(currentDestination().next());
         return currentDestination();
@@ -49,7 +49,7 @@ public abstract class DataLayerWrapper
     /**
      * @return current destination this wrapper write data to
      */
-    public AbstractOutputFile<?> currentDestination()
+    public AbstractFile<?> currentDestination()
     {
         return destination;
     }
@@ -66,7 +66,7 @@ public abstract class DataLayerWrapper
     /**
      * @param destination destination to write to
      */
-    public void setNextDestination(AbstractOutputFile<?> destination)
+    public void setNextDestination(AbstractFile<?> destination)
     {
         this.destination = destination;
     }
