@@ -7,7 +7,6 @@ import org.apache.cassandra.distributed.api.ICluster;
 import org.apache.cassandra.distributed.api.IInstance;
 import org.apache.cassandra.sidecar.server.Server;
 import org.apache.cassandra.sidecar.testing.QualifiedName;
-import org.apache.cassandra.spark.data.partitioner.Partitioner;
 import org.apache.cassandra.testing.ClusterBuilderConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -19,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static com.instaclustr.cassandra.TransformerOptions.TransformationStrategy.ONE_FILE_ALL_SSTABLES;
 import static org.apache.cassandra.testing.TestUtils.DC1_RF1;
 import static org.apache.cassandra.testing.TestUtils.TEST_KEYSPACE;
 import static org.apache.cassandra.testing.TestUtils.TEST_TABLE_PREFIX;
@@ -42,16 +40,7 @@ public class RemoteTransformationTest extends SharedClusterSparkIntegrationTestB
     @Test
     public void testRemoteTransformationOfPartition(@TempDir Path tmpDir)
     {
-        TransformerOptions options = new TransformerOptions();
-        options.sidecar = List.of("127.0.0.1:" + server.actualPort());
-        options.keyspace = TEST_KEYSPACE;
-        options.table = TEST_TABLE_PREFIX;
-        options.transformationStrategy = ONE_FILE_ALL_SSTABLES;
-        options.output = tmpDir.toAbsolutePath().toString();
-        options.keepSnapshot = true;
-        SSTableToParquetTransformer transformer = new SSTableToParquetTransformer(options);
-        List<? extends AbstractOutputFile<?>> outputFiles = transformer.runTransformation();
-        System.out.println(outputFiles);
+
     }
 
     @Test
