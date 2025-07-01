@@ -2,14 +2,12 @@ package com.instaclustr.cassandra;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
-import com.google.inject.Injector;
 import org.apache.cassandra.analytics.SharedClusterSparkIntegrationTestBase;
 import org.apache.cassandra.distributed.api.ICluster;
 import org.apache.cassandra.distributed.api.IInstance;
 import org.apache.cassandra.sidecar.server.Server;
 import org.apache.cassandra.sidecar.testing.QualifiedName;
 import org.apache.cassandra.testing.ClusterBuilderConfiguration;
-import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
@@ -28,8 +26,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class RemoteTransformationTest extends SharedClusterSparkIntegrationTestBase
 {
-    private Injector sidecarServerInjector;
-
     static
     {
         System.setProperty("cassandra.sidecar.versions_to_test", "4.0");
@@ -51,6 +47,7 @@ public class RemoteTransformationTest extends SharedClusterSparkIntegrationTestB
         options.table = TEST_TABLE_PREFIX;
         options.transformationStrategy = ONE_FILE_ALL_SSTABLES;
         options.output = tmpDir.toAbsolutePath().toString();
+        options.keepSnapshot = true;
         SSTableToParquetTransformer transformer = new SSTableToParquetTransformer(options);
         List<? extends AbstractOutputFile<?>> outputFiles = transformer.runTransformation();
         System.out.println(outputFiles);
