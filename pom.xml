@@ -77,134 +77,6 @@
         </snapshotRepository>
     </distributionManagement>
 
-    <dependencies>
-
-        <dependency>
-            <groupId>org.apache.cassandra</groupId>
-            <artifactId>cassandra-analytics-core_spark3_2.12</artifactId>
-            <version>0.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.cassandra</groupId>
-            <artifactId>cassandra-analytics-sidecar-client_spark3_2.12</artifactId>
-            <version>0.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-catalyst_2.12</artifactId>
-            <version>3.2.2</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>log4j</groupId>
-                    <artifactId>log4j</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-avro_2.12</artifactId>
-            <version>3.2.2</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-common</artifactId>
-            <version>1.12.2</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-avro</artifactId>
-            <version>1.12.2</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>2.13.2</version>
-        </dependency>
-
-        <dependency>
-            <groupId>info.picocli</groupId>
-            <artifactId>picocli</artifactId>
-            <version>4.7.6</version>
-        </dependency>
-
-        <!-- logging -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>2.0.17</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-log4j12</artifactId>
-            <version>1.7.30</version>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>1.5.18</version>
-        </dependency>
-
-        <!-- misses when starting 4.0 cluster for sidecar-->
-        <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-core</artifactId>
-            <version>4.2.15</version>
-        </dependency>
-
-        <!-- pridal som -->
-<!--        <dependency>-->
-<!--            <groupId>org.apache.cassandra</groupId>-->
-<!--            <artifactId>cassandra-analytics-sidecar-client_spark3_2.12</artifactId>-->
-<!--            <version>0.1.0</version>-->
-<!--        </dependency>-->
-
-        <!-- pridal som -->
-<!--        <dependency>-->
-<!--            <groupId>org.apache.cassandra</groupId>-->
-<!--            <artifactId>sidecar-vertx-client-all</artifactId>-->
-<!--            <version>0.2-SNAPSHOT</version>-->
-<!--        </dependency>-->
-
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-catalyst_2.12</artifactId>
-            <version>3.2.2</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>log4j</groupId>
-                    <artifactId>log4j</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- test -->
-
-        <dependency>
-            <groupId>org.apache.cassandra</groupId>
-            <artifactId>cassandra-analytics-integration-framework_spark3_2.12</artifactId>
-            <version>0.1.0</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.cassandra</groupId>
-            <artifactId>cassandra-analytics-integration-tests_spark3_2.12</artifactId>
-            <version>0.1.0</version>
-            <scope>test</scope>
-            <classifier>test</classifier>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.12</artifactId>
-            <version>3.2.2</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
     <build>
         <plugins>
             <plugin>
@@ -354,145 +226,259 @@
     </build>
 
     <profiles>
-<!--        <profile>-->
-<!--            <id>default</id>-->
-<!--            <activation>-->
-<!--                <activeByDefault>true</activeByDefault>-->
-<!--            </activation>-->
-<!--            <build>-->
-<!--                <finalName>sstable-transformer-bundled</finalName>-->
-<!--                <plugins>-->
-<!--                    <plugin>-->
-<!--                        <groupId>org.apache.maven.plugins</groupId>-->
-<!--                        <artifactId>maven-shade-plugin</artifactId>-->
-<!--                        <version>${maven.shade.plugin.version}</version>-->
-<!--                        <configuration>-->
-<!--                            <shadedArtifactAttached>true</shadedArtifactAttached>-->
-<!--                            <shadedClassifierName>bundled</shadedClassifierName>-->
-<!--                        </configuration>-->
-<!--                    </plugin>-->
-<!--                </plugins>-->
-<!--            </build>-->
-<!--            <dependencies>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.cassandra</groupId>-->
-<!--                    <artifactId>cassandra-analytics-core_spark3_2.12</artifactId>-->
-<!--                    <version>0.1.0</version>-->
-<!--                    <exclusions>-->
-<!--                        <exclusion>-->
-<!--                            <groupId>software.amazon.awssdk</groupId>-->
-<!--                            <artifactId>s3</artifactId>-->
-<!--                        </exclusion>-->
-<!--                        <exclusion>-->
-<!--                            <groupId>software.amazon.awssdk</groupId>-->
-<!--                            <artifactId>netty-nio-client</artifactId>-->
-<!--                        </exclusion>-->
-<!--                    </exclusions>-->
-<!--                </dependency>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.cassandra</groupId>-->
-<!--                    <artifactId>cassandra-analytics-sidecar-client_spark3_2.12</artifactId>-->
-<!--                    <version>0.1.0</version>-->
-<!--                </dependency>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.spark</groupId>-->
-<!--                    <artifactId>spark-catalyst_2.12</artifactId>-->
-<!--                    <version>3.2.2</version>-->
-<!--                    <exclusions>-->
-<!--                        <exclusion>-->
-<!--                            <groupId>log4j</groupId>-->
-<!--                            <artifactId>log4j</artifactId>-->
-<!--                        </exclusion>-->
-<!--                    </exclusions>-->
-<!--                </dependency>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.spark</groupId>-->
-<!--                    <artifactId>spark-avro_2.12</artifactId>-->
-<!--                    <version>3.2.2</version>-->
-<!--                </dependency>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.parquet</groupId>-->
-<!--                    <artifactId>parquet-common</artifactId>-->
-<!--                    <version>1.12.2</version>-->
-<!--                </dependency>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.parquet</groupId>-->
-<!--                    <artifactId>parquet-avro</artifactId>-->
-<!--                    <version>1.12.2</version>-->
-<!--                </dependency>-->
-<!--            </dependencies>-->
-<!--        </profile>-->
-<!--        <profile>-->
-<!--            <id>spark</id>-->
-<!--            <build>-->
-<!--                <finalName>sstable-transformer-spark</finalName>-->
-<!--                <plugins>-->
-<!--                    <plugin>-->
-<!--                        <groupId>org.apache.maven.plugins</groupId>-->
-<!--                        <artifactId>maven-shade-plugin</artifactId>-->
-<!--                        <version>${maven.shade.plugin.version}</version>-->
-<!--                        <configuration>-->
-<!--                            <shadedArtifactAttached>true</shadedArtifactAttached>-->
-<!--                            <shadedClassifierName>spark</shadedClassifierName>-->
-<!--                        </configuration>-->
-<!--                    </plugin>-->
-<!--                </plugins>-->
-<!--            </build>-->
-<!--            <dependencies>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.cassandra</groupId>-->
-<!--                    <artifactId>cassandra-analytics-core_spark3_2.12</artifactId>-->
-<!--                    <version>0.1.0</version>-->
-<!--                    <scope>provided</scope>-->
-<!--                    <exclusions>-->
-<!--                        <exclusion>-->
-<!--                            <groupId>software.amazon.awssdk</groupId>-->
-<!--                            <artifactId>s3</artifactId>-->
-<!--                        </exclusion>-->
-<!--                        <exclusion>-->
-<!--                            <groupId>software.amazon.awssdk</groupId>-->
-<!--                            <artifactId>netty-nio-client</artifactId>-->
-<!--                        </exclusion>-->
-<!--                    </exclusions>-->
-<!--                </dependency>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.cassandra</groupId>-->
-<!--                    <artifactId>cassandra-analytics-sidecar-client_spark3_2.12</artifactId>-->
-<!--                    <version>0.1.0</version>-->
-<!--                    <scope>provided</scope>-->
-<!--                </dependency>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.spark</groupId>-->
-<!--                    <artifactId>spark-catalyst_2.12</artifactId>-->
-<!--                    <version>3.2.2</version>-->
-<!--                    <scope>provided</scope>-->
-<!--                    <exclusions>-->
-<!--                        <exclusion>-->
-<!--                            <groupId>log4j</groupId>-->
-<!--                            <artifactId>log4j</artifactId>-->
-<!--                        </exclusion>-->
-<!--                    </exclusions>-->
-<!--                </dependency>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.spark</groupId>-->
-<!--                    <artifactId>spark-avro_2.12</artifactId>-->
-<!--                    <version>3.2.2</version>-->
-<!--                    &lt;!&ndash; on purpose not provided &ndash;&gt;-->
-<!--                </dependency>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.parquet</groupId>-->
-<!--                    <artifactId>parquet-common</artifactId>-->
-<!--                    <version>1.12.2</version>-->
-<!--                    <scope>provided</scope>-->
-<!--                </dependency>-->
-<!--                <dependency>-->
-<!--                    <groupId>org.apache.parquet</groupId>-->
-<!--                    <artifactId>parquet-avro</artifactId>-->
-<!--                    <version>1.12.2</version>-->
-<!--                    <scope>provided</scope>-->
-<!--                </dependency>-->
-<!--            </dependencies>-->
-<!--        </profile>-->
+        <profile>
+            <id>default</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <finalName>sstable-transformer-bundled</finalName>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>${maven.shade.plugin.version}</version>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>bundled</shadedClassifierName>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.cassandra</groupId>
+                    <artifactId>cassandra-analytics-core_spark3_2.12</artifactId>
+                    <version>0.1.0</version>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>software.amazon.awssdk</groupId>
+                            <artifactId>s3</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.cassandra</groupId>
+                    <artifactId>cassandra-analytics-sidecar-client_spark3_2.12</artifactId>
+                    <version>0.1.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-catalyst_2.12</artifactId>
+                    <version>3.2.2</version>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>log4j</groupId>
+                            <artifactId>log4j</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-avro_2.12</artifactId>
+                    <version>3.2.2</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.parquet</groupId>
+                    <artifactId>parquet-common</artifactId>
+                    <version>1.12.2</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.parquet</groupId>
+                    <artifactId>parquet-avro</artifactId>
+                    <version>1.12.2</version>
+                </dependency>
+
+                <dependency>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId>
+                    <version>2.13.2</version>
+                </dependency>
+
+                <dependency>
+                    <groupId>info.picocli</groupId>
+                    <artifactId>picocli</artifactId>
+                    <version>4.7.6</version>
+                </dependency>
+
+                <!-- logging -->
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                    <version>2.0.17</version>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                    <version>1.7.30</version>
+                </dependency>
+
+                <dependency>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-classic</artifactId>
+                    <version>1.5.18</version>
+                </dependency>
+
+                <!-- misses when starting 4.0 cluster for sidecar-->
+                <dependency>
+                    <groupId>io.dropwizard.metrics</groupId>
+                    <artifactId>metrics-core</artifactId>
+                    <version>4.2.15</version>
+                </dependency>
+
+                <!-- test -->
+                <dependency>
+                    <groupId>org.apache.cassandra</groupId>
+                    <artifactId>cassandra-analytics-integration-framework_spark3_2.12</artifactId>
+                    <version>0.1.0</version>
+                    <scope>test</scope>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.apache.cassandra</groupId>
+                    <artifactId>cassandra-analytics-integration-tests_spark3_2.12</artifactId>
+                    <version>0.1.0</version>
+                    <scope>test</scope>
+                    <classifier>test</classifier>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-sql_2.12</artifactId>
+                    <version>3.2.2</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>spark</id>
+            <build>
+                <finalName>sstable-transformer-spark</finalName>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>${maven.shade.plugin.version}</version>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>spark</shadedClassifierName>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.cassandra</groupId>
+                    <artifactId>cassandra-analytics-core_spark3_2.12</artifactId>
+                    <version>0.1.0</version>
+                    <scope>provided</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>software.amazon.awssdk</groupId>
+                            <artifactId>s3</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.cassandra</groupId>
+                    <artifactId>cassandra-analytics-sidecar-client_spark3_2.12</artifactId>
+                    <version>0.1.0</version>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-catalyst_2.12</artifactId>
+                    <version>3.2.2</version>
+                    <scope>provided</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>log4j</groupId>
+                            <artifactId>log4j</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-avro_2.12</artifactId>
+                    <version>3.2.2</version>
+                    <!-- on purpose not provided -->
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.parquet</groupId>
+                    <artifactId>parquet-common</artifactId>
+                    <version>1.12.2</version>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.parquet</groupId>
+                    <artifactId>parquet-avro</artifactId>
+                    <version>1.12.2</version>
+                    <scope>provided</scope>
+                </dependency>
+
+                <dependency>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId>
+                    <version>2.13.2</version>
+                </dependency>
+
+                <dependency>
+                    <groupId>info.picocli</groupId>
+                    <artifactId>picocli</artifactId>
+                    <version>4.7.6</version>
+                </dependency>
+
+                <!-- logging -->
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                    <version>2.0.17</version>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                    <version>1.7.30</version>
+                </dependency>
+
+                <dependency>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-classic</artifactId>
+                    <version>1.5.18</version>
+                </dependency>
+
+                <!-- misses when starting 4.0 cluster for sidecar-->
+                <dependency>
+                    <groupId>io.dropwizard.metrics</groupId>
+                    <artifactId>metrics-core</artifactId>
+                    <version>4.2.15</version>
+                </dependency>
+
+                <!-- test -->
+                <dependency>
+                    <groupId>org.apache.cassandra</groupId>
+                    <artifactId>cassandra-analytics-integration-framework_spark3_2.12</artifactId>
+                    <version>0.1.0</version>
+                    <scope>test</scope>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.apache.cassandra</groupId>
+                    <artifactId>cassandra-analytics-integration-tests_spark3_2.12</artifactId>
+                    <version>0.1.0</version>
+                    <scope>test</scope>
+                    <classifier>test</classifier>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-sql_2.12</artifactId>
+                    <version>3.2.2</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
         <profile>
             <id>deb</id>
             <build>

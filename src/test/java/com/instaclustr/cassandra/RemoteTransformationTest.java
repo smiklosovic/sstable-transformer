@@ -7,6 +7,7 @@ import org.apache.cassandra.distributed.api.ICluster;
 import org.apache.cassandra.distributed.api.IInstance;
 import org.apache.cassandra.sidecar.server.Server;
 import org.apache.cassandra.sidecar.testing.QualifiedName;
+import org.apache.cassandra.spark.data.partitioner.Partitioner;
 import org.apache.cassandra.testing.ClusterBuilderConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -109,6 +110,8 @@ public class RemoteTransformationTest extends SharedClusterSparkIntegrationTestB
     @Override
     protected ClusterBuilderConfiguration testClusterConfiguration()
     {
-        return super.testClusterConfiguration().nodesPerDc(1);
+        return super.testClusterConfiguration()
+                .tokenCount(16)
+                .nodesPerDc(1);
     }
 }
