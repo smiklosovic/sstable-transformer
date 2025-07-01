@@ -102,7 +102,7 @@ public class DataLayerReader
             avroSchema = SchemaConverters.toAvroType(structType,
                                                      false,
                                                      "root",
-                                                     SSTableToParquetTransformer.class.getCanonicalName());
+                                                     SSTableTransformer.class.getCanonicalName());
 
             switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
         }

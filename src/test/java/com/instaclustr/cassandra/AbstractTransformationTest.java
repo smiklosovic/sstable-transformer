@@ -32,7 +32,6 @@ import org.apache.cassandra.sidecar.testing.QualifiedName;
 import org.apache.cassandra.spark.data.DataLayer;
 import org.apache.cassandra.testing.ClusterBuilderConfiguration;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Ignore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
@@ -52,7 +51,6 @@ import static org.apache.cassandra.testing.TestUtils.TEST_KEYSPACE;
 import static org.apache.cassandra.testing.TestUtils.TEST_TABLE_PREFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Ignore
 public abstract class AbstractTransformationTest extends SharedClusterSparkIntegrationTestBase
 {
     static
@@ -61,6 +59,10 @@ public abstract class AbstractTransformationTest extends SharedClusterSparkInteg
         System.setProperty("cassandra.test.dtest_jar_path", "dtest-jars");
         System.setProperty("cassandra.integration.sidecar.test.enable_mtls", "false");
         System.setProperty("SKIP_STARTUP_VALIDATIONS", "true");
+        System.setProperty("sbr.cache.summary.maxEntries", "0");
+        System.setProperty("sbr.cache.index.maxEntries", "0");
+        System.setProperty("sbr.cache.stats.maxEntries", "0");
+        System.setProperty("sbr.cache.filter.maxEntries", "0");
     }
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractTransformationTest.class);
@@ -80,11 +82,11 @@ public abstract class AbstractTransformationTest extends SharedClusterSparkInteg
         options.partitions = partitions;
         // unsorted
         options.sorted = false;
-        verify(10_000, new SSTableToParquetTransformer(options).runTransformation(), tmpOpts);
+        verify(10_000, new SSTableTransformer(options).runTransformation(), tmpOpts);
 
         // sorted
         options.sorted = true;
-        verify(10_000, new SSTableToParquetTransformer(options).runTransformation(), tmpOpts);
+        verify(10_000, new SSTableTransformer(options).runTransformation(), tmpOpts);
     }
 
     @Test
@@ -96,7 +98,7 @@ public abstract class AbstractTransformationTest extends SharedClusterSparkInteg
         for (TransformerOptions.Compression compression : TransformerOptions.Compression.getAllForParquet())
         {
             options.compression = compression;
-            verify(10_000, new SSTableToParquetTransformer(options).runTransformation(), options);
+            verify(10_000, new SSTableTransformer(options).runTransformation(), options);
         }
     }
 
@@ -109,7 +111,7 @@ public abstract class AbstractTransformationTest extends SharedClusterSparkInteg
         for (TransformerOptions.Compression compression : TransformerOptions.Compression.getAllForAvro())
         {
             options.compression = compression;
-            verify(10_000, new SSTableToParquetTransformer(options).runTransformation(), options);
+            verify(10_000, new SSTableTransformer(options).runTransformation(), options);
         }
     }
 
@@ -120,10 +122,10 @@ public abstract class AbstractTransformationTest extends SharedClusterSparkInteg
         options.maxRowsPerFile = 100;
 
         options.sorted = false;
-        verify(10_000, new SSTableToParquetTransformer(options).runTransformation(), options);
+        verify(10_000, new SSTableTransformer(options).runTransformation(), options);
 
         options.sorted = true;
-        verify(10_000, new SSTableToParquetTransformer(options).runTransformation(), options);
+        verify(10_000, new SSTableTransformer(options).runTransformation(), options);
     }
 
     @Override

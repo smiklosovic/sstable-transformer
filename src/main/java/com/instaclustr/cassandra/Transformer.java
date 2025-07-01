@@ -29,7 +29,7 @@ import picocli.CommandLine.Spec;
 @Command(name = "transformer",
         mixinStandardHelpOptions = true,
         description = "Transforms Cassandra SSTable to Parquet or Avro file",
-        subcommands = {SSTableToParquetTransformer.class, CassandraPartitionsResolver.class, HelpCommand.class},
+        subcommands = {SSTableTransformer.class, CassandraPartitionsResolver.class, HelpCommand.class},
         versionProvider = Transformer.class,
         usageHelpWidth = 128)
 public class Transformer implements IVersionProvider, Runnable

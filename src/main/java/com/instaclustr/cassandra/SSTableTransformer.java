@@ -36,19 +36,19 @@ import static java.util.stream.Collectors.toList;
         description = "Transform SSTables to Parquet or Avro files.",
         versionProvider = Transformer.class,
         subcommands = HelpCommand.class)
-public class SSTableToParquetTransformer implements Runnable
+public class SSTableTransformer implements Runnable
 {
-    private static final Logger logger = LoggerFactory.getLogger(SSTableToParquetTransformer.class);
+    private static final Logger logger = LoggerFactory.getLogger(SSTableTransformer.class);
 
     @Mixin
     private TransformerOptions options;
 
     // for picocli
-    public SSTableToParquetTransformer()
+    public SSTableTransformer()
     {
     }
 
-    public SSTableToParquetTransformer(TransformerOptions options)
+    public SSTableTransformer(TransformerOptions options)
     {
         this.options = options;
         options.validate();
