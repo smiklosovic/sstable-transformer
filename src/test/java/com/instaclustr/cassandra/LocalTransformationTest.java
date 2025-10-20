@@ -18,6 +18,9 @@
  */
 package com.instaclustr.cassandra;
 
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,12 +28,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.instaclustr.cassandra.TransformationVerifier.verify;
 import static org.apache.cassandra.testing.TestUtils.TEST_KEYSPACE;
 import static org.apache.cassandra.testing.TestUtils.TEST_TABLE_PREFIX;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class LocalTransformationTest extends AbstractTransformationTest
 {
+    @Test
+    public void testTransformation(@TempDir Path outputDir) throws Exception
+    {
+        TransformerOptions options = getOptions(outputDir);
+        // unsorted
+        options.sorted = false;
+        verify(10_000, new SSTableTransformer(options).runTransformation(), options);
+
+        // sorted
+        options.sorted = true;
+        verify(10_000, new SSTableTransformer(options).runTransformation(), options);
+    }
+
     @Override
     public TransformerOptions getOptions(Path outputDir)
     {

@@ -18,13 +18,52 @@
  */
 package com.instaclustr.cassandra;
 
+import org.apache.cassandra.spark.data.DataLayer;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.instaclustr.cassandra.TransformationVerifier.verify;
+import static org.apache.cassandra.testing.TestUtils.TEST_KEYSPACE;
+import static org.apache.cassandra.testing.TestUtils.TEST_TABLE_PREFIX;
 
 public class RemoteTransformationTest extends AbstractTransformationTest
 {
+    @Test
+    public void testTransformation(@TempDir Path outputDir) throws Exception
+    {
+        TransformerOptions tmpOpts = getOptions(outputDir);
+        DataLayerWrapper wrapper = new ArrayList<>(DataLayerHelpers.getDataLayerWrappers(tmpOpts)).get(0);
+        DataLayer dataLayer = wrapper.getDataLayer();
+        int i = dataLayer.partitionCount();
+        String partitions = "0.." + (i - 1);
+
+        TransformerOptions options = getOptions(outputDir);
+        options.partitions = partitions;
+        // unsorted
+        options.sorted = false;
+        verify(10_000, new SSTableTransformer(options).runTransformation(), tmpOpts);
+
+        // sorted
+        options.sorted = true;
+        verify(10_000, new SSTableTransformer(options).runTransformation(), tmpOpts);
+    }
+
+
     @Override
     public TransformerOptions getOptions(Path outPutDir)
     {
-        return getRemoteOptions(outPutDir);
+        TransformerOptions options = new TransformerOptions();
+        options.sidecar = List.of("localhost:" + server.actualPort());
+        options.keyspace = TEST_KEYSPACE;
+        options.table = TEST_TABLE_PREFIX;
+        options.transformationStrategy = TransformerOptions.TransformationStrategy.ONE_FILE_ALL_SSTABLES;
+        options.output = outPutDir.toAbsolutePath().toString();
+        options.keepSnapshot = true;
+
+        return options;
     }
 }
