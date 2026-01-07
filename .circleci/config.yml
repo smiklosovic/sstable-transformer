@@ -58,9 +58,9 @@ jobs:
       - run:
           name: Build jvm dtest jars with jdk11
           command: |
-            CASSANDRA_USE_JDK11=true scripts/build-dtest-jars.sh
+            CASSANDRA_USE_JDK11=true core/scripts/build-dtest-jars.sh
       - persist_to_workspace:
-          root: dtest-jars
+          root: core/dtest-jars
           paths:
             - "*.jar"
   # Runs java 11 tests on a docker image
@@ -138,7 +138,7 @@ jobs:
       - run: ./mvnw clean install -Pdefault -DskipTests=true
 
       - store_artifacts:
-          path: ~/sstable-transformer/target/sstable-transformer-1.1.0-bundled.jar
+          path: ~/sstable-transformer/target/sstable-transformer-2.0.0-bundled.jar
           destination: sstable-transformer-bundled.jar
 
   spark_build-jar:
@@ -155,7 +155,7 @@ jobs:
       - run: ./mvnw clean install -Pspark -DskipTests=true
 
       - store_artifacts:
-          path: ~/sstable-transformer/target/sstable-transformer-1.1.0-spark.jar
+          path: ~/sstable-transformer/target/sstable-transformer-2.0.0-spark.jar
           destination: sstable-transformer-spark.jar
 
 workflows:

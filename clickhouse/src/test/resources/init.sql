@@ -1,0 +1,7 @@
+CREATE TABLE my_clickhouse_table
+(
+    id Int32,
+    col1 Nullable(Int32),
+    col2 Nullable(Int32)
+)
+ENGINE = MergeTree() ORDER BY id;
