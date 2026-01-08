@@ -65,7 +65,8 @@ public class ParquetRowWriter extends GenericRowWriter
         try
         {
             writer.write(convertInternalRowToAvro(row, structType, schema));
-        } catch (Throwable t)
+        }
+        catch (Throwable t)
         {
             throw new RuntimeException("Unable to write row", t);
         }

@@ -25,10 +25,18 @@ public interface TransformationSink extends AutoCloseable
     /**
      * @param sinkObject object to sink to this transformer
      */
-    void sink(AbstractFile sinkObject) throws Exception;
+    void sink(Object sinkObject) throws Exception;
 
     /**
      * @return type of input object of {@link TransformationSink#sink}.
      */
     Class<?> inputObjectType();
+
+    /**
+     * Checks if this sink supports given output format.
+     *
+     * @param format format to check
+     * @return true if this sink supports processing this outpuf format of the primary transformation
+     */
+    boolean supports(OutputFormat format);
 }

@@ -75,7 +75,8 @@ public abstract class AbstractClickhouseTest
         return new ClickhouseSink.ClickhouseConfig(url,
                                                    clickhouse.getUsername(),
                                                    clickhouse.getPassword(),
-                                                   CLICKHOUSE_TABLE);
+                                                   CLICKHOUSE_TABLE,
+                                                   false);
     }
 
     public Client getClient()

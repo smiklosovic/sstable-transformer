@@ -55,8 +55,8 @@ public class SSTableTransformer implements Runnable
     @Override
     public void run()
     {
-        for (AbstractFile outputFile : runTransformation())
-            logger.info(outputFile.getPath());
+        for (Object individualResult : runTransformation())
+            logger.info(individualResult.toString());
     }
 
     /**
@@ -64,7 +64,7 @@ public class SSTableTransformer implements Runnable
      *
      * @return list of files which were created as part of transformation
      */
-    public List<? extends AbstractInputOutputFile> runTransformation()
+    public List<Object> runTransformation()
     {
         List<DataLayerTransformer> dataLayerTransformers = getDataLayerTransformers(options);
 

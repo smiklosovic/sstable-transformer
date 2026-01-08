@@ -22,6 +22,7 @@ import com.instaclustr.transformer.api.AbstractFile;
 import com.instaclustr.transformer.api.TransformationSink;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * This class is responsible for taking an instance of {@link DataLayerWrapper}, being it
@@ -66,20 +67,21 @@ public class DataLayerTransformer
      *
      * @return list of Parquet files which were created by transformation.
      */
-    public Collection<? extends AbstractInputOutputFile> transform()
+    public List<Object> transform()
     {
         try
         {
-            Collection<? extends AbstractInputOutputFile> result = new DataLayerReader(dataLayerWrapper, options).read();
+            List<Object> result = new DataLayerReader(dataLayerWrapper, options).read();
 
             if (transformationSink == null)
                 return result;
 
-            for (AbstractFile file : result)
-                transformationSink.sink(file);
+            for (Object individualResult : result)
+                transformationSink.sink(individualResult);
 
             return result;
-        } catch (Throwable t)
+        }
+        catch (Throwable t)
         {
             throw new TransformerException("Unable to transform to " + options.outputFormat + " file(s)", t);
         }

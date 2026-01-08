@@ -35,7 +35,6 @@ import scala.collection.Seq;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
@@ -61,15 +60,16 @@ public class DataLayerReader
         this.options = options;
     }
 
-    public Collection<? extends AbstractInputOutputFile> read()
+    public List<Object> read()
     {
         try (RowsWriter rowsWriter = resolveRowsWriter(options))
         {
-            return rowsWriter.write();
+            rowsWriter.write();
+            return rowsWriter.getResults();
         }
     }
 
-    private RowsWriter resolveRowsWriter(TransformerOptions options)
+    private FileBasedRowsWriter resolveRowsWriter(TransformerOptions options)
     {
         if (options.sorted)
             return new SortedRowsWriter(dataLayerWrapper, options);
@@ -79,61 +79,99 @@ public class DataLayerReader
 
     private static abstract class RowsWriter implements AutoCloseable
     {
-        private static final Logger logger = LoggerFactory.getLogger(RowsWriter.class);
-
-        protected final List<AbstractInputOutputFile> outputFiles = new ArrayList<>();
         protected final DataLayerWrapper dataLayerWrapper;
         protected final TransformerOptions options;
-        private final Schema avroSchema;
-        protected final long maxRowsPerFile;
         protected final StructType structType;
-
-        protected int count = 0;
-        protected long start = currentTimeMillis();
         protected GenericRowWriter rowWriter;
 
-        protected RowsWriter(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
+        public RowsWriter(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
         {
             this.dataLayerWrapper = dataLayerWrapper;
             this.options = options;
             structType = this.dataLayerWrapper.getDataLayer().structType();
-            maxRowsPerFile = dataLayerWrapper.getMaxRowsPerParquetFile();
-            outputFiles.add(dataLayerWrapper.currentDestination());
-            avroSchema = SchemaConverters.toAvroType(structType,
-                                                     false,
-                                                     "root",
-                                                     SSTableTransformer.class.getCanonicalName());
-
-            switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
         }
 
-        public List<AbstractInputOutputFile> write()
+        public void write()
         {
             try (SparkRowIterator iterator = new SparkRowIterator(dataLayerWrapper.getPartition(),
                                                                   dataLayerWrapper.getDataLayer(),
                                                                   dataLayerWrapper.getDataLayer().structType(),
                                                                   emptyList()))
             {
+                // TODO record bude akceptovat AbstractFile a potom metoda na vysledky, genericka
+                // TODO record(internalWrite(iterator)
+                // TODO v internalWrite bude sink bud na subory alebo na byte array
                 internalWrite(iterator);
-            } catch (Throwable t)
+            }
+            catch (Throwable t)
             {
                 throw new RuntimeException(t);
-            } finally
+            }
+            finally
+            {
+                close();
+            }
+        }
+
+        @Override
+        public void close()
+        {
+            if (rowWriter != null)
             {
                 try
                 {
-                    if (rowWriter != null)
-                        rowWriter.close();
-                } catch (Exception ex)
+                    rowWriter.close();
+                    rowWriter = null;
+                }
+                catch (Throwable t)
                 {
-                    logger.warn("Unable to close Parquet row writer.", ex);
+                    throw new TransformerException("Error while closing ParquetRowWriter.", t);
                 }
             }
-
-            return outputFiles;
         }
 
         protected abstract void internalWrite(SparkRowIterator iterator) throws IOException;
+
+        protected abstract void record(Object individualResult);
+
+        public abstract List<Object> getResults();
+    }
+
+    private static abstract class FileBasedRowsWriter extends RowsWriter
+    {
+        private static final Logger logger = LoggerFactory.getLogger(FileBasedRowsWriter.class);
+
+        private final List<AbstractInputOutputFile> outputFiles = new ArrayList<>();
+        protected final long maxRowsPerFile;
+        protected final Schema avroSchema;
+        protected int count = 0;
+        protected long start = currentTimeMillis();
+
+        protected FileBasedRowsWriter(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
+        {
+            super(dataLayerWrapper, options);
+
+            record(dataLayerWrapper.currentDestination());
+            avroSchema = SchemaConverters.toAvroType(structType,
+                                                     false,
+                                                     "root",
+                                                     SSTableTransformer.class.getCanonicalName());
+
+            switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
+            maxRowsPerFile = dataLayerWrapper.getMaxRowsPerParquetFile();
+        }
+
+        @Override
+        protected void record(Object individualResult)
+        {
+            outputFiles.add((AbstractInputOutputFile) individualResult);
+        }
+
+        @Override
+        public List<Object> getResults()
+        {
+            return new ArrayList<>(outputFiles);
+        }
 
         protected long printDuration(AbstractInputOutputFile outputFile, int count, long start, long end)
         {
@@ -177,25 +215,9 @@ public class DataLayerReader
                 throw new TransformerException("Error while closing current Spark row consumer", t);
             }
         }
-
-        @Override
-        public void close()
-        {
-            if (rowWriter != null)
-            {
-                try
-                {
-                    rowWriter.close();
-                    rowWriter = null;
-                } catch (Throwable t)
-                {
-                    throw new TransformerException("Error while closing ParquetRowWriter.", t);
-                }
-            }
-        }
     }
 
-    private static class UnsortedRowsWriter extends RowsWriter
+    private static class UnsortedRowsWriter extends FileBasedRowsWriter
     {
         public UnsortedRowsWriter(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
         {
@@ -217,7 +239,7 @@ public class DataLayerReader
                     dataLayerWrapper.currentDestination().setCount(count);
                     AbstractInputOutputFile nextDestination = dataLayerWrapper.getNextDestination();
                     switchWriter(nextDestination, options.outputFormat);
-                    outputFiles.add(nextDestination);
+                    record(nextDestination);
                     count = 0;
                 }
 
@@ -230,7 +252,7 @@ public class DataLayerReader
         }
     }
 
-    private static class SortedRowsWriter extends RowsWriter
+    private static class SortedRowsWriter extends FileBasedRowsWriter
     {
         private final Comparator<InternalRow> rowComparator;
         private final InternalRow[] rowsBuffer;
@@ -258,7 +280,7 @@ public class DataLayerReader
             {
                 if (shouldSwitch)
                 {
-                    outputFiles.add(dataLayerWrapper.getNextDestination());
+                    record(dataLayerWrapper.getNextDestination());
                     switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
                     shouldSwitch = false;
                 }
@@ -282,7 +304,7 @@ public class DataLayerReader
             if (shouldSwitch && rowsBuffer[0] != null)
             {
                 dataLayerWrapper.currentDestination().setCount(count);
-                outputFiles.add(dataLayerWrapper.getNextDestination());
+                record(dataLayerWrapper.getNextDestination());
                 switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
             }
 

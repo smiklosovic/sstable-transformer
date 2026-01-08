@@ -48,7 +48,9 @@ public class AbstractIntegrationTest extends SharedClusterIntegrationTestBase
 {
     static
     {
-        if (System.getProperty("transformer.cassandra.version").equals("4.1"))
+        String cassandraVersion = System.getProperty("transformer.cassandra.version");
+
+        if (cassandraVersion != null && cassandraVersion.equals("4.1"))
             System.setProperty("cassandra.sidecar.versions_to_test", "4.1");
         else
             System.setProperty("cassandra.sidecar.versions_to_test", "5.0");

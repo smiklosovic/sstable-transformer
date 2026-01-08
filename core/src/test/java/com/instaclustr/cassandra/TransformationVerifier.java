@@ -19,7 +19,6 @@
 package com.instaclustr.cassandra;
 
 import com.instaclustr.transformer.api.OutputFormat;
-import com.instaclustr.transformer.api.AbstractFile;
 import com.instaclustr.transformer.core.AbstractInputOutputFile;
 import com.instaclustr.transformer.core.TransformerOptions;
 import org.apache.avro.file.DataFileReader;
@@ -39,11 +38,11 @@ import static org.junit.Assert.assertTrue;
 class TransformationVerifier
 {
     public static void verify(int expectedCount,
-                              List<? extends AbstractInputOutputFile> outputFiles,
+                              List<Object> outputFiles,
                               TransformerOptions options) throws IOException
     {
         int actualCount = 0;
-        for (AbstractInputOutputFile file : outputFiles)
+        for (Object file : outputFiles)
         {
             if (options.outputFormat == OutputFormat.PARQUET)
                 actualCount += verifyParquet(file, options);
@@ -54,9 +53,11 @@ class TransformationVerifier
         assertEquals(expectedCount, actualCount);
     }
 
-    private static int verifyParquet(AbstractInputOutputFile file, TransformerOptions options) throws IOException
+    private static int verifyParquet(Object file, TransformerOptions options) throws IOException
     {
-        try (ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(file)
+        assert file instanceof AbstractInputOutputFile : "file is not an instance of AbstractInputOutputFile";
+
+        try (ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder((AbstractInputOutputFile) file)
                 .usePageChecksumVerification()
                 .useBloomFilter(options.bloomFilterEnabled)
                 .build())
@@ -83,9 +84,12 @@ class TransformationVerifier
         }
     }
 
-    private static int verifyAvro(AbstractFile file, TransformerOptions options) throws IOException
+    private static int verifyAvro(Object file, TransformerOptions options) throws IOException
     {
-        try (org.apache.avro.file.FileReader<GenericRecord> fileReader = DataFileReader.openReader(new File(file.getPath()), new GenericDatumReader<>()))
+        assert file instanceof AbstractInputOutputFile : "file is not an instance of AbstractInputOutputFile";
+
+        try (org.apache.avro.file.FileReader<GenericRecord> fileReader = DataFileReader.openReader(new File(((AbstractInputOutputFile) file).getPath()),
+                                                                                                   new GenericDatumReader<>()))
         {
             int count = 0;
             GenericRecord record;

@@ -51,18 +51,20 @@ public class TransformationExecutor implements AutoCloseable
         executor = Executors.newFixedThreadPool(threads);
     }
 
-    public List<? extends AbstractInputOutputFile> run(Collection<DataLayerTransformer> transformers)
+    public List<Object> run(Collection<DataLayerTransformer> transformers)
     {
         return waitForCompletion(submit(transformers));
     }
 
-    private List<? extends AbstractInputOutputFile> waitForCompletion(Collection<CompletableFuture<? extends Collection<? extends AbstractInputOutputFile>>> futures)
+    private List<Object> waitForCompletion(Collection<CompletableFuture<List<Object>>> futures)
     {
         try
         {
-            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenApply(v -> futures.stream().map(CompletableFuture::join).collect(toList()))
+            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                    .thenApply(v -> futures.stream().map(CompletableFuture::join).collect(toList()))
                     .get()
-                    .stream().flatMap(Collection::stream)
+                    .stream()
+                    .flatMap(Collection::stream)
                     .collect(toList());
         }
         catch (InterruptedException | ExecutionException e)
@@ -71,7 +73,7 @@ public class TransformationExecutor implements AutoCloseable
         }
     }
 
-    private Collection<CompletableFuture<? extends Collection<? extends AbstractInputOutputFile>>> submit(Collection<DataLayerTransformer> transformers)
+    private Collection<CompletableFuture<List<Object>>> submit(Collection<DataLayerTransformer> transformers)
     {
         if (executor.isShutdown())
             throw new IllegalStateException("Executor is shut down");
