@@ -27,7 +27,7 @@ import java.nio.file.Paths;
  * support other protocols anyway at the time of coding this solution.
  * <p>
  */
-public class ClickhouseFileSink extends AbstractClickhouseSink
+public class ClickhouseFileSink extends AbstractClickHouseSink
 {
     private static final Logger logger = LoggerFactory.getLogger(ClickhouseFileSink.class);
 
@@ -43,7 +43,7 @@ public class ClickhouseFileSink extends AbstractClickhouseSink
         // for spi
     }
 
-    public ClickhouseFileSink(ClickhouseConfig config)
+    public ClickhouseFileSink(ClickHouseConfig config)
     {
         super(config);
     }
@@ -82,16 +82,6 @@ public class ClickhouseFileSink extends AbstractClickhouseSink
         }
     }
 
-    private ClickHouseFormat getFormat(OutputFormat outputFormat)
-    {
-        if (outputFormat == OutputFormat.PARQUET)
-            return ClickHouseFormat.Parquet;
-        else if (outputFormat == OutputFormat.AVRO)
-            return ClickHouseFormat.Avro;
-
-        throw new UnsupportedOperationException("Invalid format " + outputFormat);
-    }
-
     @Override
     public Class<?> inputObjectType()
     {
@@ -102,5 +92,15 @@ public class ClickhouseFileSink extends AbstractClickhouseSink
     public boolean supports(OutputFormat format)
     {
         return format == OutputFormat.PARQUET || format == OutputFormat.AVRO;
+    }
+
+    private ClickHouseFormat getFormat(OutputFormat outputFormat)
+    {
+        if (outputFormat == OutputFormat.PARQUET)
+            return ClickHouseFormat.Parquet;
+        else if (outputFormat == OutputFormat.AVRO)
+            return ClickHouseFormat.Avro;
+
+        throw new UnsupportedOperationException("Invalid format " + outputFormat);
     }
 }

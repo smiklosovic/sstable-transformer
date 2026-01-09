@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import scala.collection.JavaConverters;
 import scala.collection.Seq;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -80,8 +81,7 @@ public class DataLayerReader
         if (options.outputFormat == OutputFormat.ARROW_STREAM)
         {
             return new ArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
-        }
-        else
+        } else
         {
             if (options.sorted)
                 return new SortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
@@ -118,12 +118,10 @@ public class DataLayerReader
                                                                   emptyList()))
             {
                 internalWrite(iterator);
-            }
-            catch (Throwable t)
+            } catch (Throwable t)
             {
                 throw new RuntimeException(t);
-            }
-            finally
+            } finally
             {
                 close();
             }
@@ -138,8 +136,7 @@ public class DataLayerReader
                 {
                     rowWriter.close();
                     rowWriter = null;
-                }
-                catch (Throwable t)
+                } catch (Throwable t)
                 {
                     throw new TransformerException("Error while closing ParquetRowWriter.", t);
                 }
@@ -152,8 +149,7 @@ public class DataLayerReader
             {
                 if (transformationSink != null)
                     transformationSink.sink(object);
-            }
-            catch (Throwable t)
+            } catch (Throwable t)
             {
                 throw new RuntimeException(t);
             }
@@ -171,19 +167,23 @@ public class DataLayerReader
         private static final Logger logger = LoggerFactory.getLogger(ArrowStreamRowsWriter.class);
 
         private ArrowStreamInMemoryRowWriter arrowStreamInMemoryRowWriter;
+        private ByteArrayOutputStream outputStream;
 
         public ArrowStreamRowsWriter(DataLayerWrapper dataLayerWrapper,
                                      TransformationSink transformationSink,
                                      TransformerOptions options)
         {
             super(dataLayerWrapper, transformationSink, options);
-            arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter();
+            outputStream = new ByteArrayOutputStream();
+            arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter(structType, outputStream);
             rowWriter = arrowStreamInMemoryRowWriter;
         }
 
         @Override
         protected void internalWrite(SparkRowIterator iterator) throws IOException
         {
+            arrowStreamInMemoryRowWriter.start();
+
             while (iterator.next())
             {
                 if (count == dataLayerWrapper.getMaxRowsPerBatch())
@@ -205,6 +205,8 @@ public class DataLayerReader
                 executeSink(arrowStreamInMemoryRowWriter.getOutputStream());
                 printDuration(count, start, currentTimeMillis());
             }
+
+            arrowStreamInMemoryRowWriter.stop();
         }
 
         @Override
@@ -222,7 +224,7 @@ public class DataLayerReader
 
         private void switchWriter()
         {
-            arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter();
+            arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter(structType, outputStream);
             rowWriter = arrowStreamInMemoryRowWriter;
         }
 
@@ -417,8 +419,7 @@ public class DataLayerReader
                 try
                 {
                     transformationSink.sink(dataLayerWrapper.currentDestination());
-                }
-                catch (Throwable t)
+                } catch (Throwable t)
                 {
                     // TODO handle
                 }

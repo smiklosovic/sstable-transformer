@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Each contains 1 row. In tests, as they can be returned in different order,
  * we make order irrelevant.
  */
-public class ClickhouseFileSinkTest extends AbstractClickhouseSinkTest
+public class ClickHouseFileSinkTest extends AbstractClickhouseSinkTest
 {
     @Test
     public void testParquetFileImport() throws Throwable

@@ -66,13 +66,13 @@ public abstract class AbstractClickhouseSinkTest
         return new ClickhouseFileSink(getConfig());
     }
 
-    public ClickhouseConfig getConfig()
+    public ClickHouseConfig getConfig()
     {
         String url = String.format("http://%s:%d",
                                    clickhouse.getHost(),
                                    clickhouse.getMappedPort(8123));
 
-        return new ClickhouseConfig(url,
+        return new ClickHouseConfig(url,
                                     clickhouse.getUsername(),
                                     clickhouse.getPassword(),
                                     CLICKHOUSE_TABLE,
@@ -81,7 +81,7 @@ public abstract class AbstractClickhouseSinkTest
 
     public Client getClient()
     {
-        ClickhouseConfig config = getConfig();
+        ClickHouseConfig config = getConfig();
         return new Client.Builder()
                 .addEndpoint(config.endpoint)
                 .setUsername(config.username)

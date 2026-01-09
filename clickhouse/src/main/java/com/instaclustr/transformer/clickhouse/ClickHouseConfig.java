@@ -2,7 +2,7 @@ package com.instaclustr.transformer.clickhouse;
 
 import java.util.Properties;
 
-public class ClickhouseConfig
+public class ClickHouseConfig
 {
     private static final String ENDPOINT_PROPERTY = "endpoint";
     private static final String USERNAME_PROPERTY = "username";
@@ -21,7 +21,7 @@ public class ClickhouseConfig
     public String table;
     public boolean removeFileAfterProcessed;
 
-    public ClickhouseConfig(String endpoint,
+    public ClickHouseConfig(String endpoint,
                             String username,
                             String password,
                             String table,
@@ -36,7 +36,7 @@ public class ClickhouseConfig
         validate();
     }
 
-    public ClickhouseConfig(Properties properties)
+    public ClickHouseConfig(Properties properties)
     {
         this(properties.getProperty(ENDPOINT_PROPERTY, DEFAULT_ENDPOINT),
              properties.getProperty(USERNAME_PROPERTY, DEFAULT_USERNAME),

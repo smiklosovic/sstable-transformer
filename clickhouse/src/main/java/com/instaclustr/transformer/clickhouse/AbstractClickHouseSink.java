@@ -8,12 +8,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 
-public abstract class AbstractClickhouseSink implements TransformationSink
+public abstract class AbstractClickHouseSink implements TransformationSink
 {
     protected Client client;
-    protected ClickhouseConfig config;
+    protected ClickHouseConfig config;
 
-    public AbstractClickhouseSink(ClickhouseConfig config)
+    public AbstractClickHouseSink(ClickHouseConfig config)
     {
         if (config != null)
         {
@@ -35,17 +35,17 @@ public abstract class AbstractClickhouseSink implements TransformationSink
         }
     }
 
-    private ClickhouseConfig parseConfig(Path sinkConfigFile) throws Exception
+    private ClickHouseConfig parseConfig(Path sinkConfigFile) throws Exception
     {
         try (InputStream is = Files.newInputStream(sinkConfigFile))
         {
             Properties properties = new Properties();
             properties.load(is);
-            return new ClickhouseConfig(properties);
+            return new ClickHouseConfig(properties);
         }
     }
 
-    private Client initializeClient(ClickhouseConfig config)
+    private Client initializeClient(ClickHouseConfig config)
     {
         if (client == null)
         {
