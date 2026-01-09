@@ -2,7 +2,7 @@ package com.instaclustr.transformer.clickhouse;
 
 import com.instaclustr.transformer.api.OutputFormat;
 import com.instaclustr.transformer.api.TransformationSink;
-import com.instaclustr.transformer.core.DataLayerReader;
+import com.instaclustr.transformer.core.DataLayerTransformer;
 import com.instaclustr.transformer.core.DataLayerWrapper;
 import com.instaclustr.transformer.core.LocalDataLayerWrapper;
 import com.instaclustr.transformer.core.TransformerOptions;
@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Set;
 
 public class ClickHouseMemorySinkTest extends AbstractClickhouseSinkTest
@@ -22,9 +21,8 @@ public class ClickHouseMemorySinkTest extends AbstractClickhouseSinkTest
         TransformerOptions options = new TransformerOptions();
 
         TransformationSink transformationSink = new ClickHouseMemorySink();
-        DataLayerReader dataLayerReader = new DataLayerReader(getDataLayerWrapper(options), options, transformationSink);
-
-        dataLayerReader.read();
+        DataLayerTransformer dataLayerTransformer = new DataLayerTransformer(options, getDataLayerWrapper(options), transformationSink);
+        dataLayerTransformer.transform();
 
         // assert
     }

@@ -3,6 +3,11 @@ package com.instaclustr.transformer.api;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Path;
 
+import static com.instaclustr.transformer.api.OutputFormat.ARROW_STREAM;
+import static com.instaclustr.transformer.api.OutputFormat.AVRO;
+import static com.instaclustr.transformer.api.OutputFormat.PARQUET;
+import static java.lang.String.format;
+
 /**
  * Implementations might react on a creation of a Parquet / Avro file
  * and transform it further.
@@ -41,34 +46,59 @@ public interface TransformationSink extends AutoCloseable
      */
     boolean supports(OutputFormat format);
 
+    /**
+     * If sink is null, it throws when output format is {@link OutputFormat#ARROW_STREAM}.
+     * <p>
+     * Throws when {@code outputFormat} is not among supported ones via {@link TransformationSink#supports(OutputFormat)}.
+     * <p>
+     * Throws when {@link TransformationSink#inputObjectType()} is not equal {@link AbstractFile}
+     * for output formats of {@link OutputFormat#AVRO} or {@link OutputFormat#PARQUET}.
+     *
+     * @param transformationSink sink to use
+     * @param outputFormat       format of transformation
+     */
     static void validate(TransformationSink transformationSink, OutputFormat outputFormat)
     {
         if (transformationSink == null)
-            return;
+        {
+            if (outputFormat == ARROW_STREAM)
+            {
+                throw new IllegalStateException("You have to use some sink when having output format of " + ARROW_STREAM);
+            }
 
-        if (outputFormat == OutputFormat.AVRO || outputFormat == OutputFormat.PARQUET)
+            return;
+        }
+
+        if (!transformationSink.supports(outputFormat))
+        {
+            throw new IllegalStateException(format("Sink '%s' does not support output format %s",
+                                                   transformationSink.name(),
+                                                   outputFormat));
+        }
+
+        if (outputFormat == AVRO || outputFormat == PARQUET)
         {
             if (transformationSink.inputObjectType() != AbstractFile.class)
             {
-                throw new IllegalStateException(String.format("Sink %s can not accept anything but %s",
-                                                              transformationSink.name(),
-                                                              transformationSink.inputObjectType().getName()));
+                throw new IllegalStateException(format("Sink '%s' can not accept anything but %s",
+                                                       transformationSink.name(),
+                                                       transformationSink.inputObjectType().getName()));
             }
         }
-        else if (outputFormat == OutputFormat.ARROW_STREAM)
+        else if (outputFormat == ARROW_STREAM)
         {
             if (transformationSink.inputObjectType() != ByteArrayOutputStream.class)
             {
-                throw new IllegalStateException(String.format("Sink %s can not accept anything but %s",
-                                                              transformationSink.name(),
-                                                              transformationSink.inputObjectType().getName()));
+                throw new IllegalStateException(format("Sink '%s' can not accept anything but %s",
+                                                       transformationSink.name(),
+                                                       transformationSink.inputObjectType().getName()));
             }
         }
         else
         {
-            throw new IllegalStateException(String.format("Sink %s is not supporting output format %s",
-                                                          transformationSink.name(),
-                                                          outputFormat));
+            throw new IllegalStateException(format("Sink %s is not supporting output format %s",
+                                                   transformationSink.name(),
+                                                   outputFormat));
         }
     }
 }
