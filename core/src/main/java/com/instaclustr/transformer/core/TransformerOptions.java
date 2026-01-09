@@ -49,6 +49,7 @@ import static com.instaclustr.transformer.core.TransformerOptions.Transformation
 public class TransformerOptions implements Serializable
 {
     private static final Logger logger = LoggerFactory.getLogger(TransformerOptions.class);
+    public String sinkName;
 
     public enum TransformationStrategy implements Serializable
     {

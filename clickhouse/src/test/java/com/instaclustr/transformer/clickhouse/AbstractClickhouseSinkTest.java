@@ -61,9 +61,9 @@ public abstract class AbstractClickhouseSinkTest
         }
     }
 
-    protected ClickhouseFileSink getSink()
+    protected ClickHouseFileSink getSink()
     {
-        return new ClickhouseFileSink(getConfig());
+        return new ClickHouseFileSink(getConfig());
     }
 
     public ClickHouseConfig getConfig()

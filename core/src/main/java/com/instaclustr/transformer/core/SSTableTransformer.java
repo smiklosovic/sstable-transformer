@@ -18,6 +18,7 @@
  */
 package com.instaclustr.transformer.core;
 
+import com.instaclustr.transformer.api.TransformationSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
@@ -26,6 +27,7 @@ import picocli.CommandLine.Mixin;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.ServiceLoader;
 
 import static com.instaclustr.transformer.core.DataLayerHelpers.getDataLayerTransformers;
 
@@ -63,9 +65,9 @@ public class SSTableTransformer implements Runnable
      *
      * @return list of files which were created as part of transformation
      */
-    public List<Object> runTransformation()
+    public List<Object> runTransformation(ServiceLoader.Provider<TransformationSink> sinkProvider)
     {
-        List<DataLayerTransformer> dataLayerTransformers = getDataLayerTransformers(options);
+        List<DataLayerTransformer> dataLayerTransformers = getDataLayerTransformers(options, sinkProvider);
 
         if (!dataLayerTransformers.isEmpty())
         {
@@ -79,5 +81,46 @@ public class SSTableTransformer implements Runnable
             logger.info("Nothing to transform. Check paths to input directories / files are correct.");
             return Collections.emptyList();
         }
+    }
+
+    /**
+     *
+     * @param transformationSinkClass class to create new instances from
+     * @return transformation result
+     */
+    public List<Object> runTransformation(Class<? extends TransformationSink> transformationSinkClass)
+    {
+        assert transformationSinkClass != null : "sink class can not be null!";
+        return runTransformation(new ServiceLoader.Provider<>()
+        {
+            @Override
+            public Class<? extends TransformationSink> type()
+            {
+                return transformationSinkClass;
+            }
+
+            @Override
+            public TransformationSink get()
+            {
+                try
+                {
+                    return type().getDeclaredConstructor().newInstance();
+                }
+                catch (Throwable t)
+                {
+                    throw new IllegalStateException("Unable to create an instance of " + type().getName());
+                }
+            }
+        });
+    }
+
+    /**
+     * Runs transformation without any sinks.
+     *
+     * @return transformation result
+     */
+    public List<Object> runTransformation()
+    {
+        return runTransformation((ServiceLoader.Provider<TransformationSink>) null);
     }
 }

@@ -49,12 +49,4 @@ public class ClickHouseMemorySink extends AbstractClickHouseSink
     {
         return format == OutputFormat.ARROW_STREAM;
     }
-
-    private ClickHouseFormat getFormat(OutputFormat outputFormat)
-    {
-        if (outputFormat == OutputFormat.ARROW_STREAM)
-            return ClickHouseFormat.ArrowStream;
-
-        throw new UnsupportedOperationException("Invalid format " + outputFormat);
-    }
 }

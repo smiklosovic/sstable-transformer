@@ -28,7 +28,7 @@ public class ClickHouseFileSinkTest extends AbstractClickhouseSinkTest
     @Test
     public void testParquetFileImport() throws Throwable
     {
-        try (ClickhouseFileSink sink = getSink())
+        try (ClickHouseFileSink sink = getSink())
         {
             sink.sink(getFile("parquet/oa-2-big-Data.db-1.parquet"));
             sink.sink(getFile("parquet/oa-3-big-Data.db-1.parquet"));
@@ -40,7 +40,7 @@ public class ClickHouseFileSinkTest extends AbstractClickhouseSinkTest
     @Test
     public void testAvroFileImport() throws Throwable
     {
-        try (ClickhouseFileSink sink = getSink())
+        try (ClickHouseFileSink sink = getSink())
         {
             sink.sink(getFile("avro/oa-2-big-Data.db-1.avro"));
             sink.sink(getFile("avro/oa-3-big-Data.db-1.avro"));

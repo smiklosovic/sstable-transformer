@@ -1,17 +1,11 @@
 package com.instaclustr.transformer.clickhouse;
 
 import com.instaclustr.transformer.api.OutputFormat;
-import com.instaclustr.transformer.api.TransformationSink;
-import com.instaclustr.transformer.core.DataLayerTransformer;
-import com.instaclustr.transformer.core.DataLayerWrapper;
-import com.instaclustr.transformer.core.LocalDataLayerWrapper;
+import com.instaclustr.transformer.core.SSTableTransformer;
 import com.instaclustr.transformer.core.TransformerOptions;
-import org.apache.cassandra.spark.data.LocalDataLayer;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Set;
 
 public class ClickHouseMemorySinkTest extends AbstractClickhouseSinkTest
 {
@@ -20,19 +14,7 @@ public class ClickHouseMemorySinkTest extends AbstractClickhouseSinkTest
     {
         TransformerOptions options = new TransformerOptions();
 
-        TransformationSink transformationSink = new ClickHouseMemorySink();
-        DataLayerTransformer dataLayerTransformer = new DataLayerTransformer(options, getDataLayerWrapper(options), transformationSink);
-        dataLayerTransformer.transform();
-
-        // assert
-    }
-
-    private DataLayerWrapper getDataLayerWrapper(TransformerOptions options)
-    {
-        LocalDataLayer dataLayer = LocalDataLayer.from(options.forLocalDataLayer());
-        dataLayer.setDataFilePaths(Set.of(Paths.get("src/test/resources/sstables").toAbsolutePath()));
-        // null - not necessary
-        return new LocalDataLayerWrapper(dataLayer, null, 1000);
+        new SSTableTransformer(options).runTransformation(ClickHouseMemorySink.class);
     }
 
     private TransformerOptions getOptions(Path outputDir)

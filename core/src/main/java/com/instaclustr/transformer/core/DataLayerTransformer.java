@@ -21,6 +21,7 @@ package com.instaclustr.transformer.core;
 import com.instaclustr.transformer.api.TransformationSink;
 
 import java.util.List;
+import java.util.ServiceLoader;
 
 import static java.lang.String.format;
 
@@ -33,18 +34,21 @@ public class DataLayerTransformer
 {
     private final TransformerOptions options;
     private final DataLayerWrapper dataLayerWrapper;
-    private final TransformationSink transformationSink;
+    private final ServiceLoader.Provider<TransformationSink> sinkProvider;
 
-    public DataLayerTransformer(TransformerOptions options, DataLayerWrapper dataLayerWrapper)
+    public DataLayerTransformer(TransformerOptions options,
+                                DataLayerWrapper dataLayerWrapper)
     {
-        this(options, dataLayerWrapper, SPISinkProvider.getSink().orElse(null));
+        this(options, dataLayerWrapper, null);
     }
 
-    public DataLayerTransformer(TransformerOptions options, DataLayerWrapper dataLayerWrapper, TransformationSink transformationSink)
+    public DataLayerTransformer(TransformerOptions options,
+                                DataLayerWrapper dataLayerWrapper,
+                                ServiceLoader.Provider<TransformationSink> sinkProvider)
     {
         this.options = options;
         this.dataLayerWrapper = dataLayerWrapper;
-        this.transformationSink = transformationSink;
+        this.sinkProvider = sinkProvider;
     }
 
     /**
@@ -54,34 +58,37 @@ public class DataLayerTransformer
      */
     public List<Object> transform()
     {
-        return transform(transformationSink);
+        return transform(sinkProvider);
     }
 
     /**
      * Transforms data via given sink.
      *
-     * @param transformationSink sink to use, optional
+     * @param sinkProvider sink provider to use, optional, can be null
      * @return list of transformation results, for file based transformations it is list of created files.
      */
-    public List<Object> transform(TransformationSink transformationSink)
+    public List<Object> transform(ServiceLoader.Provider<TransformationSink> sinkProvider)
     {
+        TransformationSink sink = null;
+
+        if (sinkProvider != null)
+            sink = sinkProvider.get();
+
+        TransformationSink.validate(sink, options.outputFormat);
+
         try
         {
-            if (transformationSink != null)
-            {
-                TransformationSink.validate(transformationSink, options.outputFormat);
-                transformationSink.init(options.sinkConfig);
-            }
+            if (sink != null)
+                sink.init(options.sinkConfig);
         }
         catch (Exception ex)
         {
-            throw new TransformerException(format("Unable to validate and initialize sink '%s' of class '%s': %s",
-                                                  transformationSink.name(),
-                                                  transformationSink.getClass().getName(),
+            throw new TransformerException(format("Unable to validate and initialize sink '%s': %s",
+                                                  options.sinkName,
                                                   ex.getMessage()));
         }
 
-        try (DataLayerReader reader = new DataLayerReader(dataLayerWrapper, options, transformationSink))
+        try (DataLayerReader reader = new DataLayerReader(dataLayerWrapper, options, sink))
         {
             return reader.read();
         }

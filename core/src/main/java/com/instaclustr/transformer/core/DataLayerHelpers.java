@@ -18,17 +18,25 @@
  */
 package com.instaclustr.transformer.core;
 
+import com.instaclustr.transformer.api.TransformationSink;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader.Provider;
 
 import static java.util.stream.Collectors.toList;
 
 public class DataLayerHelpers
 {
+    public static List<DataLayerTransformer> getDataLayerTransformers(TransformerOptions options, Provider<TransformationSink> sinkProvider)
+    {
+        return getDataLayerWrappers(options).stream().map(w -> new DataLayerTransformer(options, w, sinkProvider)).collect(toList());
+    }
+
     public static List<DataLayerTransformer> getDataLayerTransformers(TransformerOptions options)
     {
-        return getDataLayerWrappers(options).stream().map(w -> new DataLayerTransformer(options, w)).collect(toList());
+        return getDataLayerTransformers(options, SPISinkProvider.getSinkProvider(options.sinkName));
     }
 
     public static Collection<? extends DataLayerWrapper> getDataLayerWrappers(TransformerOptions options)

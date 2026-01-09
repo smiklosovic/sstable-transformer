@@ -13,7 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 /**
- * Name of this sink is {@code clickhouse-file-based}.
+ * Name of this sink is {@code clickhouse-file}.
  * <p>
  * Takes {@link AbstractFile} which is backed, presumably, by Parquet / Avro file,
  * and it will insert it into a Clickhouse table via client's
@@ -27,23 +27,23 @@ import java.nio.file.Paths;
  * support other protocols anyway at the time of coding this solution.
  * <p>
  */
-public class ClickhouseFileSink extends AbstractClickHouseSink
+public class ClickHouseFileSink extends AbstractClickHouseSink
 {
-    private static final Logger logger = LoggerFactory.getLogger(ClickhouseFileSink.class);
+    private static final Logger logger = LoggerFactory.getLogger(ClickHouseFileSink.class);
 
     @Override
     public String name()
     {
-        return "clickhouse-file-sink";
+        return "clickhouse-file";
     }
 
-    public ClickhouseFileSink()
+    public ClickHouseFileSink()
     {
         super(null);
         // for spi
     }
 
-    public ClickhouseFileSink(ClickHouseConfig config)
+    public ClickHouseFileSink(ClickHouseConfig config)
     {
         super(config);
     }
