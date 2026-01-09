@@ -109,7 +109,7 @@ public abstract class AbstractClickhouseSinkTest
         };
     }
 
-    public List<List<String>> select() throws Throwable
+    public List<List<String>> clickhouseSelect() throws Throwable
     {
         List<List<String>> result = new ArrayList<>();
 

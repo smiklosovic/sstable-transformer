@@ -45,7 +45,7 @@ public class ClickHouseMemorySinkTest extends AbstractClickhouseSinkTest
         options.outputFormat = OutputFormat.ARROW_STREAM;
 
         options.output = outputDir.toAbsolutePath().toString();
-        options.input = List.of(getInputDir().toAbsolutePath().toString());
+        //options.input = List.of(getInputDir().toAbsolutePath().toString());
 
         return options;
     }

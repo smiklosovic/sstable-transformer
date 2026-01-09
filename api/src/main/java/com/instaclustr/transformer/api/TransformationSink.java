@@ -1,5 +1,6 @@
 package com.instaclustr.transformer.api;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Path;
 
 /**
@@ -39,4 +40,35 @@ public interface TransformationSink extends AutoCloseable
      * @return true if this sink supports processing this outpuf format of the primary transformation
      */
     boolean supports(OutputFormat format);
+
+    static void validate(TransformationSink transformationSink, OutputFormat outputFormat)
+    {
+        if (transformationSink == null)
+            return;
+
+        if (outputFormat == OutputFormat.AVRO || outputFormat == OutputFormat.PARQUET)
+        {
+            if (transformationSink.inputObjectType() != AbstractFile.class)
+            {
+                throw new IllegalStateException(String.format("Sink %s can not accept anything but %s",
+                                                              transformationSink.name(),
+                                                              transformationSink.inputObjectType().getName()));
+            }
+        }
+        else if (outputFormat == OutputFormat.ARROW_STREAM)
+        {
+            if (transformationSink.inputObjectType() != ByteArrayOutputStream.class)
+            {
+                throw new IllegalStateException(String.format("Sink %s can not accept anything but %s",
+                                                              transformationSink.name(),
+                                                              transformationSink.inputObjectType().getName()));
+            }
+        }
+        else
+        {
+            throw new IllegalStateException(String.format("Sink %s is not supporting output format %s",
+                                                          transformationSink.name(),
+                                                          outputFormat));
+        }
+    }
 }

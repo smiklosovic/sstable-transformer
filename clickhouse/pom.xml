@@ -40,6 +40,13 @@
         </dependency>
 
         <dependency>
+            <groupId>org.apache.cassandra</groupId>
+            <artifactId>cassandra-analytics-integration-framework_spark3_2.12</artifactId>
+            <version>0.2.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.clickhouse</groupId>
             <artifactId>jdbc-v2</artifactId>
             <version>0.9.0</version>

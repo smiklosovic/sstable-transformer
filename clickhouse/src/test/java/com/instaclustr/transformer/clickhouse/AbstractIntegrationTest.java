@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.instaclustr.cassandra;
+package com.instaclustr.transformer.clickhouse;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
@@ -31,6 +31,8 @@ import org.apache.cassandra.sidecar.testing.QualifiedName;
 import org.apache.cassandra.sidecar.testing.SharedClusterIntegrationTestBase;
 import org.apache.cassandra.testing.ClusterBuilderConfiguration;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +47,7 @@ import static org.apache.cassandra.testing.TestUtils.TEST_TABLE_PREFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * copy copied from core for simplicity, but also enriches it to start ClickHouse so we
+ * Copied from core for simplicity, but also enriches it to start ClickHouse so we
  * have Cassandra node via dtest api machinery + ClickHouse node in Docker.
  * <p>
  * In tests, we start Cassandra (with Sidecar), create a table, insert some data, then
@@ -71,6 +73,18 @@ public class AbstractIntegrationTest extends SharedClusterIntegrationTestBase
     protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractIntegrationTest.class);
 
     protected final List<Server> sidecarServerList = new ArrayList<>();
+
+    @BeforeAll
+    public static void setupIntegrationTest()
+    {
+
+    }
+
+    @AfterAll
+    public static void teardownIntegrationTest()
+    {
+
+    }
 
     @Override
     protected void initializeSchemaForTest()

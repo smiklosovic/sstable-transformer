@@ -18,11 +18,11 @@
  */
 package com.instaclustr.transformer.core;
 
-import com.instaclustr.transformer.api.AbstractFile;
 import com.instaclustr.transformer.api.TransformationSink;
 
-import java.util.Collection;
 import java.util.List;
+
+import static java.lang.String.format;
 
 /**
  * This class is responsible for taking an instance of {@link DataLayerWrapper}, being it
@@ -37,53 +37,57 @@ public class DataLayerTransformer
 
     public DataLayerTransformer(TransformerOptions options, DataLayerWrapper dataLayerWrapper)
     {
+        this(options, dataLayerWrapper, SPISinkProvider.getSink().orElse(null));
+    }
+
+    public DataLayerTransformer(TransformerOptions options, DataLayerWrapper dataLayerWrapper, TransformationSink transformationSink)
+    {
         this.options = options;
         this.dataLayerWrapper = dataLayerWrapper;
-        transformationSink = SPISinkProvider.getSink().orElse(null);
-
-        if (transformationSink != null)
-        {
-            Class<?> sinkInputType = transformationSink.inputObjectType();
-
-            if (sinkInputType != AbstractFile.class)
-                throw new IllegalStateException("Sink can not accept anything but " + AbstractFile.class.getName() + " subtypes for now.");
-
-            try
-            {
-                transformationSink.init(options.sinkConfig);
-            }
-            catch (Exception ex)
-            {
-                throw new IllegalStateException(String.format("Unable to initialize sink '%s' of class '%s': %s",
-                                                              transformationSink.name(),
-                                                              transformationSink.getClass().getName(),
-                                                              ex.getMessage()));
-            }
-        }
+        this.transformationSink = transformationSink;
     }
 
     /**
      * Transforms data.
      *
-     * @return list of Parquet files which were created by transformation.
+     * @return list of transformation results, for file based transformations it is list of created files.
      */
     public List<Object> transform()
     {
+        return transform(transformationSink);
+    }
+
+    /**
+     * Transforms data via given sink.
+     *
+     * @param transformationSink sink to use, optional
+     * @return list of transformation results, for file based transformations it is list of created files.
+     */
+    public List<Object> transform(TransformationSink transformationSink)
+    {
         try
         {
-            List<Object> result = new DataLayerReader(dataLayerWrapper, options, transformationSink).read();
+            if (transformationSink != null)
+            {
+                TransformationSink.validate(transformationSink, options.outputFormat);
+                transformationSink.init(options.sinkConfig);
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new TransformerException(format("Unable to validate and initialize sink '%s' of class '%s': %s",
+                                                  transformationSink.name(),
+                                                  transformationSink.getClass().getName(),
+                                                  ex.getMessage()));
+        }
 
-            if (transformationSink == null)
-                return result;
-
-            for (Object individualResult : result)
-                transformationSink.sink(individualResult);
-
-            return result;
+        try (DataLayerReader reader = new DataLayerReader(dataLayerWrapper, options, transformationSink))
+        {
+            return reader.read();
         }
         catch (Throwable t)
         {
-            throw new TransformerException("Unable to transform to " + options.outputFormat + " file(s)", t);
+            throw new TransformerException("Unable to transform to " + options.outputFormat, t);
         }
     }
 }

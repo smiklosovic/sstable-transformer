@@ -52,8 +52,10 @@ import static java.util.stream.Collectors.toList;
  * As rows are being transformed and written to a respective file, if that file is considered to be full,
  * it will take care of switching the writer to the next output file.
  */
-public class DataLayerReader
+public class DataLayerReader implements AutoCloseable
 {
+    private static final Logger logger = LoggerFactory.getLogger(DataLayerReader.class);
+
     private final DataLayerWrapper dataLayerWrapper;
     private final TransformerOptions options;
     private final TransformationSink transformationSink;
@@ -87,6 +89,22 @@ public class DataLayerReader
                 return new SortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
             else
                 return new UnsortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
+        }
+    }
+
+    @Override
+    public void close()
+    {
+        if (transformationSink != null)
+        {
+            try
+            {
+                transformationSink.close();
+            }
+            catch (Throwable t)
+            {
+                logger.warn("Unable to close transformation sink: " + t.getMessage());
+            }
         }
     }
 

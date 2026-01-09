@@ -51,7 +51,7 @@ public class ClickHouseFileSinkTest extends AbstractClickhouseSinkTest
 
     private void assertContent() throws Throwable
     {
-        List<List<String>> selection = select();
+        List<List<String>> selection = clickhouseSelect();
 
         assertEquals(2, selection.size());
         List<String> row1 = selection.get(0);
