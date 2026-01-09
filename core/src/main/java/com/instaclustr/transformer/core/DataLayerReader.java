@@ -19,6 +19,7 @@
 package com.instaclustr.transformer.core;
 
 import com.instaclustr.transformer.api.OutputFormat;
+import com.instaclustr.transformer.api.TransformationSink;
 import org.apache.avro.Schema;
 import org.apache.cassandra.spark.sparksql.SparkRowIterator;
 import org.apache.spark.sql.avro.SchemaConverters;
@@ -35,6 +36,7 @@ import scala.collection.Seq;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -53,40 +55,57 @@ public class DataLayerReader
 {
     private final DataLayerWrapper dataLayerWrapper;
     private final TransformerOptions options;
+    private final TransformationSink transformationSink;
 
-    public DataLayerReader(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
+    public DataLayerReader(DataLayerWrapper dataLayerWrapper,
+                           TransformerOptions options,
+                           TransformationSink transformationSink)
     {
         this.dataLayerWrapper = dataLayerWrapper;
         this.options = options;
+        this.transformationSink = transformationSink;
     }
 
     public List<Object> read()
     {
-        try (RowsWriter rowsWriter = resolveRowsWriter(options))
+        try (RowsWriter rowsWriter = resolveRowsWriter())
         {
             rowsWriter.write();
             return rowsWriter.getResults();
         }
     }
 
-    private FileBasedRowsWriter resolveRowsWriter(TransformerOptions options)
+    private RowsWriter resolveRowsWriter()
     {
-        if (options.sorted)
-            return new SortedRowsWriter(dataLayerWrapper, options);
+        if (options.outputFormat == OutputFormat.ARROW_STREAM)
+        {
+            return new ArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
+        }
         else
-            return new UnsortedRowsWriter(dataLayerWrapper, options);
+        {
+            if (options.sorted)
+                return new SortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
+            else
+                return new UnsortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
+        }
     }
 
     private static abstract class RowsWriter implements AutoCloseable
     {
         protected final DataLayerWrapper dataLayerWrapper;
+        protected final TransformationSink transformationSink;
         protected final TransformerOptions options;
         protected final StructType structType;
-        protected GenericRowWriter rowWriter;
+        protected AbstractRowWriter rowWriter;
+        protected int count = 0;
+        protected long start = currentTimeMillis();
 
-        public RowsWriter(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
+        public RowsWriter(DataLayerWrapper dataLayerWrapper,
+                          TransformationSink transformationSink,
+                          TransformerOptions options)
         {
             this.dataLayerWrapper = dataLayerWrapper;
+            this.transformationSink = transformationSink;
             this.options = options;
             structType = this.dataLayerWrapper.getDataLayer().structType();
         }
@@ -98,9 +117,6 @@ public class DataLayerReader
                                                                   dataLayerWrapper.getDataLayer().structType(),
                                                                   emptyList()))
             {
-                // TODO record bude akceptovat AbstractFile a potom metoda na vysledky, genericka
-                // TODO record(internalWrite(iterator)
-                // TODO v internalWrite bude sink bud na subory alebo na byte array
                 internalWrite(iterator);
             }
             catch (Throwable t)
@@ -130,6 +146,19 @@ public class DataLayerReader
             }
         }
 
+        protected void executeSink(Object object)
+        {
+            try
+            {
+                if (transformationSink != null)
+                    transformationSink.sink(object);
+            }
+            catch (Throwable t)
+            {
+                throw new RuntimeException(t);
+            }
+        }
+
         protected abstract void internalWrite(SparkRowIterator iterator) throws IOException;
 
         protected abstract void record(Object individualResult);
@@ -137,19 +166,89 @@ public class DataLayerReader
         public abstract List<Object> getResults();
     }
 
+    private static class ArrowStreamRowsWriter extends RowsWriter
+    {
+        private static final Logger logger = LoggerFactory.getLogger(ArrowStreamRowsWriter.class);
+
+        private ArrowStreamInMemoryRowWriter arrowStreamInMemoryRowWriter;
+
+        public ArrowStreamRowsWriter(DataLayerWrapper dataLayerWrapper,
+                                     TransformationSink transformationSink,
+                                     TransformerOptions options)
+        {
+            super(dataLayerWrapper, transformationSink, options);
+            arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter();
+            rowWriter = arrowStreamInMemoryRowWriter;
+        }
+
+        @Override
+        protected void internalWrite(SparkRowIterator iterator) throws IOException
+        {
+            while (iterator.next())
+            {
+                if (count == dataLayerWrapper.getMaxRowsPerBatch())
+                {
+                    start = printDuration(count, start, currentTimeMillis());
+                    close();
+                    executeSink(arrowStreamInMemoryRowWriter.getOutputStream());
+                    switchWriter();
+                    count = 0;
+                }
+
+                rowWriter.accept(iterator.get());
+                count++;
+            }
+
+            if (count != 0)
+            {
+                close();
+                executeSink(arrowStreamInMemoryRowWriter.getOutputStream());
+                printDuration(count, start, currentTimeMillis());
+            }
+        }
+
+        @Override
+        protected void record(Object individualResult)
+        {
+            // there is really nothing to "record" as a result as it is in memory
+            // and will be wiped out as soon as it is transformed by a sink somewhere
+        }
+
+        @Override
+        public List<Object> getResults()
+        {
+            return Collections.emptyList();
+        }
+
+        private void switchWriter()
+        {
+            arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter();
+            rowWriter = arrowStreamInMemoryRowWriter;
+        }
+
+        private long printDuration(int count, long start, long end)
+        {
+            logger.info("Transformed {} rows in {} seconds.",
+                        count,
+                        (end - start) / 1000);
+
+            // new start
+            return currentTimeMillis();
+        }
+    }
+
     private static abstract class FileBasedRowsWriter extends RowsWriter
     {
         private static final Logger logger = LoggerFactory.getLogger(FileBasedRowsWriter.class);
 
         private final List<AbstractInputOutputFile> outputFiles = new ArrayList<>();
-        protected final long maxRowsPerFile;
         protected final Schema avroSchema;
-        protected int count = 0;
-        protected long start = currentTimeMillis();
 
-        protected FileBasedRowsWriter(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
+        protected FileBasedRowsWriter(DataLayerWrapper dataLayerWrapper,
+                                      TransformationSink transformationSink,
+                                      TransformerOptions options)
         {
-            super(dataLayerWrapper, options);
+            super(dataLayerWrapper, transformationSink, options);
 
             record(dataLayerWrapper.currentDestination());
             avroSchema = SchemaConverters.toAvroType(structType,
@@ -158,7 +257,6 @@ public class DataLayerReader
                                                      SSTableTransformer.class.getCanonicalName());
 
             switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
-            maxRowsPerFile = dataLayerWrapper.getMaxRowsPerParquetFile();
         }
 
         @Override
@@ -191,8 +289,6 @@ public class DataLayerReader
 
             try
             {
-                close();
-
                 switch (outputFormat)
                 {
                     case AVRO:
@@ -217,11 +313,13 @@ public class DataLayerReader
         }
     }
 
-    private static class UnsortedRowsWriter extends FileBasedRowsWriter
+    private static class UnsortedFileBasedRowsWriter extends FileBasedRowsWriter
     {
-        public UnsortedRowsWriter(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
+        public UnsortedFileBasedRowsWriter(DataLayerWrapper dataLayerWrapper,
+                                           TransformationSink transformationSink,
+                                           TransformerOptions options)
         {
-            super(dataLayerWrapper, options);
+            super(dataLayerWrapper, transformationSink, options);
         }
 
         @Override
@@ -229,7 +327,7 @@ public class DataLayerReader
         {
             while (iterator.next())
             {
-                if (count == maxRowsPerFile)
+                if (count == dataLayerWrapper.getMaxRowsPerBatch())
                 {
                     start = printDuration(dataLayerWrapper.currentDestination(),
                                           count,
@@ -237,9 +335,14 @@ public class DataLayerReader
                                           currentTimeMillis());
 
                     dataLayerWrapper.currentDestination().setCount(count);
-                    AbstractInputOutputFile nextDestination = dataLayerWrapper.getNextDestination();
-                    switchWriter(nextDestination, options.outputFormat);
-                    record(nextDestination);
+
+                    close();
+
+                    executeSink(dataLayerWrapper.currentDestination());
+
+                    record(dataLayerWrapper.getNextDestination());
+                    switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
+
                     count = 0;
                 }
 
@@ -252,19 +355,21 @@ public class DataLayerReader
         }
     }
 
-    private static class SortedRowsWriter extends FileBasedRowsWriter
+    private static class SortedFileBasedRowsWriter extends FileBasedRowsWriter
     {
         private final Comparator<InternalRow> rowComparator;
         private final InternalRow[] rowsBuffer;
 
-        public SortedRowsWriter(DataLayerWrapper dataLayerWrapper, TransformerOptions options)
+        public SortedFileBasedRowsWriter(DataLayerWrapper dataLayerWrapper,
+                                         TransformationSink transformationSink,
+                                         TransformerOptions options)
         {
-            super(dataLayerWrapper, options);
+            super(dataLayerWrapper, transformationSink, options);
             List<DataType> javaSchema = stream(structType.fields()).map(StructField::dataType).collect(toList());
             Seq<DataType> scalaSchema = JavaConverters.asScalaBuffer(javaSchema).toSeq();
             rowComparator = RowOrdering.createNaturalAscendingOrdering(scalaSchema);
 
-            int arraySize = (int) maxRowsPerFile;
+            int arraySize = (int) dataLayerWrapper.getMaxRowsPerBatch();
             if (arraySize == -1)
                 arraySize = Integer.parseInt(System.getProperty("transformer.buffer.size", "10000000"));
 
@@ -280,6 +385,8 @@ public class DataLayerReader
             {
                 if (shouldSwitch)
                 {
+                    close();
+                    executeSink(dataLayerWrapper.currentDestination());
                     record(dataLayerWrapper.getNextDestination());
                     switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
                     shouldSwitch = false;
@@ -287,7 +394,7 @@ public class DataLayerReader
 
                 rowsBuffer[count++] = iterator.get();
 
-                if (count == maxRowsPerFile)
+                if (count == dataLayerWrapper.getMaxRowsPerBatch())
                 {
                     sortAndWrite(rowsBuffer);
                     start = printDuration(dataLayerWrapper.currentDestination(),
@@ -304,6 +411,18 @@ public class DataLayerReader
             if (shouldSwitch && rowsBuffer[0] != null)
             {
                 dataLayerWrapper.currentDestination().setCount(count);
+
+                close();
+
+                try
+                {
+                    transformationSink.sink(dataLayerWrapper.currentDestination());
+                }
+                catch (Throwable t)
+                {
+                    // TODO handle
+                }
+
                 record(dataLayerWrapper.getNextDestination());
                 switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
             }

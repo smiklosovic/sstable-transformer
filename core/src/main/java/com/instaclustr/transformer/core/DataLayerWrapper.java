@@ -26,12 +26,12 @@ import org.apache.cassandra.spark.data.DataLayer;
 public abstract class DataLayerWrapper
 {
     private AbstractInputOutputFile destination;
-    private final long maxRowsPerParquetFile;
+    private final long maxRowsPerBatch;
 
-    public DataLayerWrapper(AbstractInputOutputFile destination, long maxRowsPerParquetFile)
+    public DataLayerWrapper(AbstractInputOutputFile destination, long maxRowsPerBatch)
     {
         this.destination = destination;
-        this.maxRowsPerParquetFile = maxRowsPerParquetFile;
+        this.maxRowsPerBatch = maxRowsPerBatch;
     }
 
     /**
@@ -59,9 +59,9 @@ public abstract class DataLayerWrapper
      * @return maximum number of rows a Parquet file will contain
      * before we switch to another file by {@link DataLayerWrapper#getNextDestination()}
      */
-    public long getMaxRowsPerParquetFile()
+    public long getMaxRowsPerBatch()
     {
-        return maxRowsPerParquetFile;
+        return maxRowsPerBatch;
     }
 
     /**

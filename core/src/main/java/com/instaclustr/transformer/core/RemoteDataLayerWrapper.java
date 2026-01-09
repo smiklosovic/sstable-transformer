@@ -33,17 +33,17 @@ public class RemoteDataLayerWrapper extends DataLayerWrapper
     private final int partition;
 
     /**
-     * @param dataLayer             data layer to work with
-     * @param partition             logical Spark partition to read data from - backed by Cassandra ranges
-     * @param destination           destination to write data to
-     * @param maxRowsPerParquetFile max number of rows per one Parquet file
+     * @param dataLayer       data layer to work with
+     * @param partition       logical Spark partition to read data from - backed by Cassandra ranges
+     * @param destination     destination to write data to
+     * @param maxRowsPerBatch max number of rows per one batch to process
      */
     public RemoteDataLayerWrapper(CassandraDataLayer dataLayer,
                                   int partition,
                                   PartitionAwareFile destination,
-                                  long maxRowsPerParquetFile)
+                                  long maxRowsPerBatch)
     {
-        super(destination, maxRowsPerParquetFile);
+        super(destination, maxRowsPerBatch);
         this.dataLayer = dataLayer;
         this.partition = partition;
     }

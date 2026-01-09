@@ -32,7 +32,7 @@ import java.io.IOException;
 /**
  * Writes {@link InternalRow} into a Parquet file.
  */
-public class ParquetRowWriter extends GenericRowWriter
+public class ParquetRowWriter extends AbstractRowWriter
 {
     private final ParquetWriter<GenericRecord> writer;
     private final StructType structType;

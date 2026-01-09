@@ -30,9 +30,9 @@ import org.apache.spark.sql.types.StructType;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-public abstract class GenericRowWriter implements Consumer<InternalRow>, AutoCloseable
+public abstract class AbstractRowWriter implements Consumer<InternalRow>, AutoCloseable
 {
-    public GenericRecord convertInternalRowToAvro(InternalRow row, StructType schema, Schema avroSchema)
+    public static GenericRecord convertInternalRowToAvro(InternalRow row, StructType schema, Schema avroSchema)
     {
         GenericRecord record = new GenericData.Record(avroSchema);
 

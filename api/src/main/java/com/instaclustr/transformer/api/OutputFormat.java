@@ -5,7 +5,10 @@ import java.io.Serializable;
 public enum OutputFormat implements Serializable
 {
     PARQUET(".parquet"),
-    AVRO(".avro");
+    AVRO(".avro"),
+    // extension is not in real used as data will be just in memory
+    // but does not hurt to have it regardless
+    ARROW_STREAM(".arrow");
 
     public final String fileExtension;
 
@@ -22,12 +25,9 @@ public enum OutputFormat implements Serializable
     public static OutputFormat fromFileName(String fileName)
     {
         if (fileName.endsWith(PARQUET.getFileExtension()))
-        {
             return PARQUET;
-        } else if (fileName.endsWith(AVRO.getFileExtension()))
-        {
+        else if (fileName.endsWith(AVRO.getFileExtension()))
             return AVRO;
-        }
 
         throw new IllegalArgumentException("unsupported file " + fileName);
     }

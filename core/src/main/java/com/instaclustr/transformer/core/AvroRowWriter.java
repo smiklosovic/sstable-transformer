@@ -34,7 +34,7 @@ import java.io.IOException;
 /**
  * Writes {@link InternalRow} into an Avro file.
  */
-public class AvroRowWriter extends GenericRowWriter
+public class AvroRowWriter extends AbstractRowWriter
 {
     private final DataFileWriter<GenericRecord> writer;
     private final StructType structType;

@@ -23,12 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Each contains 1 row. In tests, as they can be returned in different order,
  * we make order irrelevant.
  */
-public class ClickhouseImportTest extends AbstractClickhouseTest
+public class ClickhouseFileSinkTest extends AbstractClickhouseSinkTest
 {
     @Test
     public void testParquetFileImport() throws Throwable
     {
-        try (ClickhouseSink sink = getSink())
+        try (ClickhouseFileSink sink = getSink())
         {
             sink.sink(getFile("parquet/oa-2-big-Data.db-1.parquet"));
             sink.sink(getFile("parquet/oa-3-big-Data.db-1.parquet"));
@@ -40,7 +40,7 @@ public class ClickhouseImportTest extends AbstractClickhouseTest
     @Test
     public void testAvroFileImport() throws Throwable
     {
-        try (ClickhouseSink sink = getSink())
+        try (ClickhouseFileSink sink = getSink())
         {
             sink.sink(getFile("avro/oa-2-big-Data.db-1.avro"));
             sink.sink(getFile("avro/oa-3-big-Data.db-1.avro"));

@@ -201,7 +201,7 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
         {
             LocalDataLayer dataLayer = LocalDataLayer.from(dataLayerOptions);
             dataLayer.setDataFilePaths(Set.of(dataPath));
-            wrappedDataLayers.add(new LocalDataLayerWrapper(dataLayer, getOutputFile(output, dataPath), maxRowsPerParquetFile()));
+            wrappedDataLayers.add(new LocalDataLayerWrapper(dataLayer, getOutputFile(output, dataPath), maxRowsPerBatch()));
         }
 
         return wrappedDataLayers;
@@ -213,7 +213,7 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
         dataLayer.setDataFilePaths(new HashSet<>(sstableDataPaths));
         return Collections.singletonList(new LocalDataLayerWrapper(dataLayer,
                                                                    getOutputFile(output, null),
-                                                                   maxRowsPerParquetFile()));
+                                                                   maxRowsPerBatch()));
     }
 
 

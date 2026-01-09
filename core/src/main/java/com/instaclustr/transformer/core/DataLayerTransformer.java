@@ -26,7 +26,7 @@ import java.util.List;
 
 /**
  * This class is responsible for taking an instance of {@link DataLayerWrapper}, being it
- * local or remote, and transforming data it is responsible for to Parquet files by iterating over
+ * local or remote, and transforming data it is responsible for (to files or other means) by iterating over
  * all rows by {@link DataLayerReader}.
  */
 public class DataLayerTransformer
@@ -71,7 +71,7 @@ public class DataLayerTransformer
     {
         try
         {
-            List<Object> result = new DataLayerReader(dataLayerWrapper, options).read();
+            List<Object> result = new DataLayerReader(dataLayerWrapper, options, transformationSink).read();
 
             if (transformationSink == null)
                 return result;

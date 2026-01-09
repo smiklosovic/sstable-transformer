@@ -1,1 +1,1 @@
-com.instaclustr.transformer.clickhouse.ClickhouseSink
+com.instaclustr.transformer.clickhouse.ClickhouseFileSink

@@ -102,7 +102,7 @@ public class RemoteDataLayersBuilder extends AbstractDataLayersBuilder
         return partitions.stream().map(partition ->
                                        {
                                            Range<BigInteger> tokenRange = dataLayer.tokenPartitioner().getTokenRange(partition);
-                                           return new RemoteDataLayerWrapper(dataLayer, partition, getOutputFile(output, tokenRange, partition), maxRowsPerParquetFile());
+                                           return new RemoteDataLayerWrapper(dataLayer, partition, getOutputFile(output, tokenRange, partition), maxRowsPerBatch());
                                        }).collect(toList());
     }
 

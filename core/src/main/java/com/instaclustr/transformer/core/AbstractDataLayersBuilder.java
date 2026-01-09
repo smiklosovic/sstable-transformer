@@ -20,15 +20,15 @@ package com.instaclustr.transformer.core;
 
 public abstract class AbstractDataLayersBuilder
 {
-    private final long maxRowsPerParquetFile;
+    private final long maxRowsPerBatch;
 
-    public AbstractDataLayersBuilder(long maxRowsPerParquetFile)
+    public AbstractDataLayersBuilder(long maxRowsPerBatch)
     {
-        this.maxRowsPerParquetFile = maxRowsPerParquetFile;
+        this.maxRowsPerBatch = maxRowsPerBatch;
     }
 
-    public long maxRowsPerParquetFile()
+    public long maxRowsPerBatch()
     {
-        return maxRowsPerParquetFile;
+        return maxRowsPerBatch;
     }
 }

@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public abstract class AbstractClickhouseTest
+public abstract class AbstractClickhouseSinkTest
 {
     private static final String CLICKHOUSE_IMAGE = "clickhouse/clickhouse-server:latest";
     private static final String CLICKHOUSE_USERNAME = "clickhouse";
@@ -61,27 +61,27 @@ public abstract class AbstractClickhouseTest
         }
     }
 
-    protected ClickhouseSink getSink()
+    protected ClickhouseFileSink getSink()
     {
-        return new ClickhouseSink(getConfig());
+        return new ClickhouseFileSink(getConfig());
     }
 
-    public ClickhouseSink.ClickhouseConfig getConfig()
+    public ClickhouseConfig getConfig()
     {
         String url = String.format("http://%s:%d",
                                    clickhouse.getHost(),
                                    clickhouse.getMappedPort(8123));
 
-        return new ClickhouseSink.ClickhouseConfig(url,
-                                                   clickhouse.getUsername(),
-                                                   clickhouse.getPassword(),
-                                                   CLICKHOUSE_TABLE,
-                                                   false);
+        return new ClickhouseConfig(url,
+                                    clickhouse.getUsername(),
+                                    clickhouse.getPassword(),
+                                    CLICKHOUSE_TABLE,
+                                    false);
     }
 
     public Client getClient()
     {
-        ClickhouseSink.ClickhouseConfig config = getConfig();
+        ClickhouseConfig config = getConfig();
         return new Client.Builder()
                 .addEndpoint(config.endpoint)
                 .setUsername(config.username)
