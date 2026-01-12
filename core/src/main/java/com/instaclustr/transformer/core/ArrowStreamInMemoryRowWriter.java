@@ -161,20 +161,20 @@ public class ArrowStreamInMemoryRowWriter extends AbstractRowWriter
             writer.close();
         }
 
-        if (outputStream != null)
-        {
-            try
-            {
-                // does not do anything per-se but anyway ...
-                outputStream.close();
-            } catch (Throwable t)
-            {
-                logger.error("Not possible to close output stream", t);
-            } finally
-            {
-                outputStream.reset();
-            }
-        }
+//        if (outputStream != null)
+//        {
+//            try
+//            {
+//                // does not do anything per-se but anyway ...
+//                outputStream.close();
+//            } catch (Throwable t)
+//            {
+//                logger.error("Not possible to close output stream", t);
+//            } finally
+//            {
+//                outputStream.reset();
+//            }
+//        }
     }
 
     public Object getOutputStream()
@@ -184,7 +184,7 @@ public class ArrowStreamInMemoryRowWriter extends AbstractRowWriter
 
     private static class InternalArrowStreamWriter implements AutoCloseable
     {
-        private static final int BATCH_SIZE = 1024;
+        private static final int BATCH_SIZE = 1000000;
 
         private final RootAllocator allocator;
         private final VectorSchemaRoot root;

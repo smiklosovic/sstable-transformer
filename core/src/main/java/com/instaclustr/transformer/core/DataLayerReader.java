@@ -136,10 +136,12 @@ public class DataLayerReader implements AutoCloseable
                                                                   emptyList()))
             {
                 internalWrite(iterator);
-            } catch (Throwable t)
+            }
+            catch (Throwable t)
             {
                 throw new RuntimeException(t);
-            } finally
+            }
+            finally
             {
                 close();
             }
@@ -167,7 +169,8 @@ public class DataLayerReader implements AutoCloseable
             {
                 if (transformationSink != null)
                     transformationSink.sink(object);
-            } catch (Throwable t)
+            }
+            catch (Throwable t)
             {
                 throw new RuntimeException(t);
             }
@@ -200,16 +203,19 @@ public class DataLayerReader implements AutoCloseable
         @Override
         protected void internalWrite(SparkRowIterator iterator) throws IOException
         {
+            int c = 0;
+
             arrowStreamInMemoryRowWriter.start();
 
             while (iterator.next())
             {
-                if (count == dataLayerWrapper.getMaxRowsPerBatch())
+                if (count == 1000)
                 {
-                    start = printDuration(count, start, currentTimeMillis());
-                    close();
+                    arrowStreamInMemoryRowWriter.stop();
                     executeSink(arrowStreamInMemoryRowWriter.getOutputStream());
-                    switchWriter();
+                    arrowStreamInMemoryRowWriter.close();
+                    arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter(structType, outputStream);
+                    rowWriter = arrowStreamInMemoryRowWriter;
                     count = 0;
                 }
 
@@ -217,14 +223,13 @@ public class DataLayerReader implements AutoCloseable
                 count++;
             }
 
+            arrowStreamInMemoryRowWriter.stop();
             if (count != 0)
             {
-                close();
                 executeSink(arrowStreamInMemoryRowWriter.getOutputStream());
-                printDuration(count, start, currentTimeMillis());
             }
 
-            arrowStreamInMemoryRowWriter.stop();
+            arrowStreamInMemoryRowWriter.close();
         }
 
         @Override
