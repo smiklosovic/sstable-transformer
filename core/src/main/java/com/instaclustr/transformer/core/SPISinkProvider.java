@@ -2,6 +2,7 @@ package com.instaclustr.transformer.core;
 
 import com.instaclustr.transformer.api.TransformationSink;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.ServiceLoader.Provider;
@@ -17,24 +18,22 @@ public class SPISinkProvider
             return null;
 
         List<Provider<TransformationSink>> allProviders = ServiceLoader.load(TransformationSink.class).stream().collect(toList());
-        List<Provider<TransformationSink>> providersOfGiveName = allProviders.stream().filter(p -> sinkName.equals(p.get().name())).collect(toList());
+        List<Provider<TransformationSink>> providersOfGivenName = allProviders.stream().filter(p -> sinkName.equals(p.get().name())).collect(toList());
 
-        if (providersOfGiveName.isEmpty())
+        if (providersOfGivenName.isEmpty())
         {
-            throw new IllegalStateException(format("There are %s providers, looking for one with name %s",
-                                                   TransformationSink.class.getSimpleName(),
-                                                   sinkName);
+            throw new IllegalStateException(format("There are no sink provider of name %s.", sinkName));
         }
 
-        if (providersOfGiveName.size() > 1)
+        if (providersOfGivenName.size() > 1)
         {
             throw new IllegalStateException(format("Not possible to have more than 1 implementation of sink of name %s but we have: %s",
                                                    sinkName,
-                                                   providersOfGiveName.stream()
+                                                   providersOfGivenName.stream()
                                                            .map(p -> p.get().getClass().getName())
                                                            .collect(toList())));
         }
 
-        return providersOfGiveName.get(0);
+        return providersOfGivenName.get(0);
     }
 }

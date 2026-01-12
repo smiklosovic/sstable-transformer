@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Option;
 
+import java.io.FileInputStream;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,6 +38,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -49,7 +51,6 @@ import static com.instaclustr.transformer.core.TransformerOptions.Transformation
 public class TransformerOptions implements Serializable
 {
     private static final Logger logger = LoggerFactory.getLogger(TransformerOptions.class);
-    public String sinkName;
 
     public enum TransformationStrategy implements Serializable
     {
@@ -346,9 +347,24 @@ public class TransformerOptions implements Serializable
             description = "Flag for telling whether we should keep snapshot used for remote transformation.")
     public boolean keepSnapshot;
 
-    @Option(names = {"--sink-config-file"},
+    @Option(names = {"--sink-config"},
             description = "Configuration file for a sink. Each sink is responsible for parsing its content.")
     public Path sinkConfig;
+
+    public Properties sinkConfigProperties;
+
+    public String sinkName()
+    {
+        if (sinkConfigProperties == null)
+            throw new IllegalStateException("There is no --sink-config, can not determine sink name!");
+
+        return sinkConfigProperties.getProperty("name");
+    }
+
+    public boolean hasSink()
+    {
+        return sinkConfigProperties != null && sinkConfigProperties.getProperty("name") != null;
+    }
 
     public Map<String, String> forRemoteDataLayer()
     {
@@ -469,7 +485,7 @@ public class TransformerOptions implements Serializable
         if (input.isEmpty() && sidecar.isEmpty())
         {
             throw new IllegalArgumentException("You have not specified --sidecar to read SSTables remotely nor " +
-                                                       "--input option to read from local disk as well. Choose one.");
+                                                       "--input option to read from local disk either. Choose one.");
         }
 
         if (resolveDataLayerLocation() == DataLayerLocation.REMOTE)
@@ -484,7 +500,10 @@ public class TransformerOptions implements Serializable
         }
 
         if (output == null)
-            throw new IllegalArgumentException("--output has to be specified");
+        {
+            if (outputFormat != OutputFormat.ARROW_STREAM)
+                throw new IllegalArgumentException("--output has to be specified");
+        }
 
         if (maxRowsPerFile != -1 && maxRowsPerFile < 1)
             throw new IllegalArgumentException("--max-rows-per-file can not be lower than 1");
@@ -507,6 +526,9 @@ public class TransformerOptions implements Serializable
         if (outputFormat == null)
             throw new IllegalArgumentException("Output format has to be specified.");
 
+        if (outputFormat == OutputFormat.ARROW_STREAM && sinkConfig == null)
+            throw new IllegalArgumentException("You have to specify --sink-config if you go to use " + OutputFormat.ARROW_STREAM);
+
         if (sinkConfig != null)
         {
             if (!Files.isRegularFile(sinkConfig))
@@ -514,6 +536,21 @@ public class TransformerOptions implements Serializable
 
             if (!Files.isReadable(sinkConfig))
                 throw new IllegalArgumentException("Sink config file is not readable: " + sinkConfig);
+
+            try
+            {
+                sinkConfigProperties = new Properties();
+                sinkConfigProperties.load(new FileInputStream(sinkConfig.toFile()));
+            }
+            catch (Throwable t)
+            {
+                throw new IllegalArgumentException(String.format("Unable to read sink config of %s. Reason: %s",
+                                                                 sinkConfig.toAbsolutePath(),
+                                                                 t.getMessage()));
+            }
+
+            if (sinkConfigProperties.getProperty("name") == null)
+                throw new IllegalArgumentException("There is no 'name' property in sink configuration file " + sinkConfig);
         }
     }
 

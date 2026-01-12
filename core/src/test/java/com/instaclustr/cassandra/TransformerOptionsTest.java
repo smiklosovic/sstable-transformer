@@ -42,7 +42,7 @@ public class TransformerOptionsTest
 
         assertThatThrownBy(options::validate)
                 .hasMessage("You have not specified --sidecar to read SSTables remotely nor " +
-                                    "--input option to read from local disk as well. Choose one.");
+                                    "--input option to read from local disk either. Choose one.");
         options.sidecar = List.of("spark-master-1:9043");
         assertThatThrownBy(options::validate).hasMessage("You have to specify --keyspace for remote data layers");
         options.keyspace = "ks";

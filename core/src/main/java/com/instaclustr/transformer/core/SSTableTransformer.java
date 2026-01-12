@@ -91,27 +91,7 @@ public class SSTableTransformer implements Runnable
     public List<Object> runTransformation(Class<? extends TransformationSink> transformationSinkClass)
     {
         assert transformationSinkClass != null : "sink class can not be null!";
-        return runTransformation(new ServiceLoader.Provider<>()
-        {
-            @Override
-            public Class<? extends TransformationSink> type()
-            {
-                return transformationSinkClass;
-            }
-
-            @Override
-            public TransformationSink get()
-            {
-                try
-                {
-                    return type().getDeclaredConstructor().newInstance();
-                }
-                catch (Throwable t)
-                {
-                    throw new IllegalStateException("Unable to create an instance of " + type().getName());
-                }
-            }
-        });
+        return runTransformation(new TransformationSinkProvider(transformationSinkClass));
     }
 
     /**
@@ -121,6 +101,9 @@ public class SSTableTransformer implements Runnable
      */
     public List<Object> runTransformation()
     {
-        return runTransformation((ServiceLoader.Provider<TransformationSink>) null);
+        if (!options.hasSink())
+            return runTransformation((ServiceLoader.Provider<TransformationSink>) null);
+        else
+            return runTransformation(SPISinkProvider.getSinkProvider(options.sinkName()));
     }
 }

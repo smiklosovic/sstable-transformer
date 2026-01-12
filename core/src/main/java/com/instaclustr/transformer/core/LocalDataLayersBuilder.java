@@ -211,8 +211,11 @@ public class LocalDataLayersBuilder extends AbstractDataLayersBuilder
     {
         LocalDataLayer dataLayer = LocalDataLayer.from(dataLayerOptions);
         dataLayer.setDataFilePaths(new HashSet<>(sstableDataPaths));
+
+        PartitionUnawareFile file = options.outputFormat == OutputFormat.ARROW_STREAM ? null : getOutputFile(output, null);
+
         return Collections.singletonList(new LocalDataLayerWrapper(dataLayer,
-                                                                   getOutputFile(output, null),
+                                                                   file,
                                                                    maxRowsPerBatch()));
     }
 

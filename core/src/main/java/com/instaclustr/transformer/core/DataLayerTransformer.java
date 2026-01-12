@@ -84,7 +84,7 @@ public class DataLayerTransformer
         catch (Exception ex)
         {
             throw new TransformerException(format("Unable to validate and initialize sink '%s': %s",
-                                                  options.sinkName,
+                                                  options.sinkName(),
                                                   ex.getMessage()));
         }
 

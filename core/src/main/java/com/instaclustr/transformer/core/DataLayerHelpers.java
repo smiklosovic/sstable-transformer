@@ -36,7 +36,7 @@ public class DataLayerHelpers
 
     public static List<DataLayerTransformer> getDataLayerTransformers(TransformerOptions options)
     {
-        return getDataLayerTransformers(options, SPISinkProvider.getSinkProvider(options.sinkName));
+        return getDataLayerTransformers(options, SPISinkProvider.getSinkProvider(options.sinkName()));
     }
 
     public static Collection<? extends DataLayerWrapper> getDataLayerWrappers(TransformerOptions options)
