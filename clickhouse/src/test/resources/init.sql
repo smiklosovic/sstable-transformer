@@ -5,3 +5,9 @@ CREATE TABLE my_clickhouse_table
     col2 Nullable(Int32)
 )
 ENGINE = MergeTree() ORDER BY id;
+
+CREATE TABLE my_clickhouse_table_simple
+(
+    id Int32
+)
+ENGINE = MergeTree() ORDER BY id;

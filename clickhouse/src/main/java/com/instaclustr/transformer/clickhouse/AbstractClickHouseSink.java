@@ -28,7 +28,7 @@ public abstract class AbstractClickHouseSink implements TransformationSink
         if (sinkConfigFile == null)
             throw new IllegalArgumentException("Sink configuration file is not specified.");
 
-        if (config != null && client != null)
+        if (config == null && client == null)
         {
             config = parseConfig(sinkConfigFile);
             client = initializeClient(config);

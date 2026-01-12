@@ -34,10 +34,12 @@ public abstract class AbstractClickhouseSinkTest
     {
         clickhouse = new ClickHouseContainer(CLICKHOUSE_IMAGE)
                 .withInitScript(CLICKHOUSE_INIT_SCRIPT)  // Run SQL on startup
-                .withExposedPorts(8123, 9000)
+                //.withExposedPorts(8123, 9000)
                 .withPassword(CLICKHOUSE_PASSWORD)
                 .withUsername(CLICKHOUSE_USERNAME)
                 .withEnv("CLICKHOUSE_DB", CLICKHOUSE_DB);
+
+        clickhouse.setPortBindings(List.of("8123:8123", "9000:9000"));
 
         clickhouse.start();
     }
