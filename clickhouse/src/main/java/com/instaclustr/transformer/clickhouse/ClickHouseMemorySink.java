@@ -31,8 +31,8 @@ public class ClickHouseMemorySink extends AbstractClickHouseSink
     {
         assert sinkObject instanceof ByteArrayOutputStream : "sink object is not an instance of " + ByteArrayOutputStream.class.getName();
 
-        try (ByteArrayOutputStream outputStream = (ByteArrayOutputStream) sinkObject;
-             InputStream is = new ByteArrayInputStream(outputStream.toByteArray()))
+        ByteArrayOutputStream outputStream = (ByteArrayOutputStream) sinkObject;
+        try (InputStream is = new ByteArrayInputStream(outputStream.toByteArray(), 0, outputStream.size()))
         {
             client.insert(config.table, is, ClickHouseFormat.ArrowStream);
         }
