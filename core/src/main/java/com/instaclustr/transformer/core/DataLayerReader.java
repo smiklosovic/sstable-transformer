@@ -19,6 +19,7 @@
 package com.instaclustr.transformer.core;
 
 import com.instaclustr.transformer.api.OutputFormat;
+import com.instaclustr.transformer.api.SinkModel;
 import com.instaclustr.transformer.api.TransformationSink;
 import org.apache.avro.Schema;
 import org.apache.cassandra.spark.sparksql.SparkRowIterator;
@@ -35,11 +36,17 @@ import scala.collection.Seq;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static java.lang.System.currentTimeMillis;
 import static java.util.Arrays.stream;
@@ -82,7 +89,13 @@ public class DataLayerReader implements AutoCloseable
     {
         if (options.outputFormat == OutputFormat.ARROW_STREAM)
         {
-            return new ArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
+            SinkModel sinkModel = SinkModel.valueOf(options.sinkConfigProperties.getProperty("sink_model").toUpperCase());
+            if (sinkModel == SinkModel.PIPE)
+                return new PipedArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
+            else if (sinkModel == SinkModel.BYTE_BUFFER)
+                return new ArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
+            else
+                throw new UnsupportedOperationException("Unsupported sink model " + sinkModel.name());
         } else
         {
             if (options.sorted)
@@ -100,8 +113,7 @@ public class DataLayerReader implements AutoCloseable
             try
             {
                 transformationSink.close();
-            }
-            catch (Throwable t)
+            } catch (Throwable t)
             {
                 logger.warn("Unable to close transformation sink: " + t.getMessage());
             }
@@ -136,12 +148,10 @@ public class DataLayerReader implements AutoCloseable
                                                                   emptyList()))
             {
                 internalWrite(iterator);
-            }
-            catch (Throwable t)
+            } catch (Throwable t)
             {
                 throw new RuntimeException(t);
-            }
-            finally
+            } finally
             {
                 close();
             }
@@ -158,7 +168,7 @@ public class DataLayerReader implements AutoCloseable
                     rowWriter = null;
                 } catch (Throwable t)
                 {
-                    throw new TransformerException("Error while closing ParquetRowWriter.", t);
+                    throw new TransformerException("Error while closing writer.", t);
                 }
             }
         }
@@ -169,8 +179,7 @@ public class DataLayerReader implements AutoCloseable
             {
                 if (transformationSink != null)
                     transformationSink.sink(object);
-            }
-            catch (Throwable t)
+            } catch (Throwable t)
             {
                 throw new RuntimeException(t);
             }
@@ -183,19 +192,145 @@ public class DataLayerReader implements AutoCloseable
         public abstract List<Object> getResults();
     }
 
+    private static class PipedArrowStreamRowsWriter extends RowsWriter
+    {
+        private static final Logger logger = LoggerFactory.getLogger(ArrowStreamRowsWriter.class);
+
+        private PipedArrowStreamRowWriter arrowStreamInMemoryRowWriter;
+        private final PipedOutputStream outputStream;
+        private final PipedInputStream inputStream;
+
+        private static final ExecutorService sinkExecutor =
+                Executors.newSingleThreadExecutor(r ->
+                                                  {
+                                                      Thread t = new Thread(r, "Arrow-Stream-Sink-Thread");
+                                                      t.setDaemon(true);
+                                                      return t;
+                                                  });
+
+        public PipedArrowStreamRowsWriter(DataLayerWrapper dataLayerWrapper,
+                                          TransformationSink transformationSink,
+                                          TransformerOptions options)
+        {
+            super(dataLayerWrapper, transformationSink, options);
+
+            try
+            {
+                inputStream = new PipedInputStream(10 * 1024 * 1024);
+                outputStream = new PipedOutputStream(inputStream);
+            } catch (Throwable t)
+            {
+                throw new RuntimeException(t);
+            }
+
+            arrowStreamInMemoryRowWriter = new PipedArrowStreamRowWriter(structType, outputStream);
+            rowWriter = arrowStreamInMemoryRowWriter;
+        }
+
+        @Override
+        protected void internalWrite(SparkRowIterator iterator) throws IOException
+        {
+            Future<?> sinkFuture = sinkExecutor.submit(() ->
+                                                       {
+                                                           try
+                                                           {
+                                                               executeSink(inputStream);
+                                                           } catch (Throwable t)
+                                                           {
+                                                               try
+                                                               {
+                                                                   inputStream.close();
+                                                               } catch (Throwable ex)
+                                                               {
+                                                                   logger.error("Error closing pipedIn", t);
+                                                               }
+                                                               logger.error("Error in sink execution", t);
+                                                               throw new RuntimeException("Sink execution failed", t);
+                                                           }
+                                                       });
+
+            arrowStreamInMemoryRowWriter = new PipedArrowStreamRowWriter(structType, outputStream);
+            rowWriter = arrowStreamInMemoryRowWriter;
+
+            try
+            {
+                arrowStreamInMemoryRowWriter.start();
+
+                while (iterator.next())
+                {
+                    rowWriter.accept(iterator.get());
+                    count++;
+                }
+
+                arrowStreamInMemoryRowWriter.stop();
+                arrowStreamInMemoryRowWriter.close();
+            } finally
+            {
+                try
+                {
+                    inputStream.close();
+                    outputStream.close();
+                } catch (Throwable t)
+                {
+                    logger.error("Error closing pipe", t);
+                }
+
+                try
+                {
+                    sinkFuture.get(); // block until sink completes
+                } catch (Throwable t)
+                {
+                    throw new RuntimeException("Sink execution failed.", t);
+                }
+            }
+        }
+
+        @Override
+        protected void record(Object individualResult)
+        {
+            // there is really nothing to "record" as a result as it is in memory
+            // and will be wiped out as soon as it is transformed by a sink somewhere
+        }
+
+        @Override
+        public List<Object> getResults()
+        {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public void close()
+        {
+            try
+            {
+                sinkExecutor.shutdown();
+                if (sinkExecutor.awaitTermination(1, TimeUnit.MINUTES))
+                {
+                    logger.warn("Unable to terminate sink executor on time.");
+                }
+            } catch (Throwable t)
+            {
+                logger.warn("Unable to terminate sink executor: " + t.getMessage());
+            }
+            super.close();
+        }
+    }
+
     private static class ArrowStreamRowsWriter extends RowsWriter
     {
         private static final Logger logger = LoggerFactory.getLogger(ArrowStreamRowsWriter.class);
 
         private ArrowStreamInMemoryRowWriter arrowStreamInMemoryRowWriter;
-        private ByteArrayOutputStream outputStream;
+        private final ByteArrayOutputStream outputStream;
+        private final int maxRowsBeforeSink;
 
         public ArrowStreamRowsWriter(DataLayerWrapper dataLayerWrapper,
                                      TransformationSink transformationSink,
                                      TransformerOptions options)
         {
             super(dataLayerWrapper, transformationSink, options);
-            outputStream = new ByteArrayOutputStream();
+            outputStream = new ByteArrayOutputStream(Integer.parseInt(options.sinkConfigProperties.getProperty("buffer_size", "1024")));
+            maxRowsBeforeSink = Integer.parseInt(options.sinkConfigProperties.getProperty("max_rows_before_sink", "100000"));
             arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter(structType, outputStream);
             rowWriter = arrowStreamInMemoryRowWriter;
         }
@@ -203,19 +338,13 @@ public class DataLayerReader implements AutoCloseable
         @Override
         protected void internalWrite(SparkRowIterator iterator) throws IOException
         {
-            int c = 0;
-
             arrowStreamInMemoryRowWriter.start();
 
             while (iterator.next())
             {
-                if (count == 1000)
+                if (count == maxRowsBeforeSink)
                 {
-                    arrowStreamInMemoryRowWriter.stop();
-                    executeSink(arrowStreamInMemoryRowWriter.getOutputStream());
-                    arrowStreamInMemoryRowWriter.close();
-                    arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter(structType, outputStream);
-                    rowWriter = arrowStreamInMemoryRowWriter;
+                    switchWriter();
                     count = 0;
                 }
 
@@ -245,8 +374,11 @@ public class DataLayerReader implements AutoCloseable
             return Collections.emptyList();
         }
 
-        private void switchWriter()
+        private void switchWriter() throws IOException
         {
+            arrowStreamInMemoryRowWriter.stop();
+            executeSink(arrowStreamInMemoryRowWriter.getOutputStream());
+            arrowStreamInMemoryRowWriter.close();
             arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter(structType, outputStream);
             rowWriter = arrowStreamInMemoryRowWriter;
         }

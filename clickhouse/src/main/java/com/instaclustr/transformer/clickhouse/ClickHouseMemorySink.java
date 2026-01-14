@@ -6,6 +6,8 @@ import com.instaclustr.transformer.api.OutputFormat;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 
 public class ClickHouseMemorySink extends AbstractClickHouseSink
 {
@@ -26,8 +28,13 @@ public class ClickHouseMemorySink extends AbstractClickHouseSink
         return "clickhouse-memory";
     }
 
-    @Override
-    public void sink(Object sinkObject) throws Exception
+    private void processPipe(Object sinkObject) throws Exception
+    {
+        assert sinkObject instanceof PipedInputStream : "sink object is not an instance of " + PipedOutputStream.class.getName();
+        client.insert(config.table, (PipedInputStream) sinkObject, ClickHouseFormat.ArrowStream);
+    }
+
+    private void processBuffer(Object sinkObject) throws Exception
     {
         assert sinkObject instanceof ByteArrayOutputStream : "sink object is not an instance of " + ByteArrayOutputStream.class.getName();
 
@@ -35,6 +42,22 @@ public class ClickHouseMemorySink extends AbstractClickHouseSink
         try (InputStream is = new ByteArrayInputStream(outputStream.toByteArray(), 0, outputStream.size()))
         {
             client.insert(config.table, is, ClickHouseFormat.ArrowStream);
+        }
+    }
+
+    @Override
+    public void sink(Object sinkObject) throws Exception
+    {
+        switch (config.sinkModel)
+        {
+            case PIPE:
+                processPipe(sinkObject);
+                break;
+            case BYTE_BUFFER:
+                processBuffer(sinkObject);
+                break;
+            default:
+                throw new UnsupportedOperationException("Unsupported sink model: " + config.sinkModel);
         }
     }
 

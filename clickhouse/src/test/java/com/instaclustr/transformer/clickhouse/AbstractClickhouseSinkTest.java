@@ -6,6 +6,7 @@ import com.clickhouse.client.api.query.QuerySettings;
 import com.clickhouse.data.ClickHouseFormat;
 import com.instaclustr.transformer.api.AbstractFile;
 import com.instaclustr.transformer.api.OutputFormat;
+import com.instaclustr.transformer.api.SinkModel;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +27,7 @@ public abstract class AbstractClickhouseSinkTest
     private static final String CLICKHOUSE_INIT_SCRIPT = "init.sql";
     private static final String CLICKHOUSE_DB = "testdb";
     public static final String CLICKHOUSE_TABLE = "my_clickhouse_table";
+    public static final String CLICKHOUSE_TABLE_SIMPLE = "my_clickhouse_table_simple";
 
     public static ClickHouseContainer clickhouse;
 
@@ -33,8 +35,7 @@ public abstract class AbstractClickhouseSinkTest
     public static void beforeAll()
     {
         clickhouse = new ClickHouseContainer(CLICKHOUSE_IMAGE)
-                .withInitScript(CLICKHOUSE_INIT_SCRIPT)  // Run SQL on startup
-                //.withExposedPorts(8123, 9000)
+                .withInitScript(CLICKHOUSE_INIT_SCRIPT)
                 .withPassword(CLICKHOUSE_PASSWORD)
                 .withUsername(CLICKHOUSE_USERNAME)
                 .withEnv("CLICKHOUSE_DB", CLICKHOUSE_DB);
@@ -53,22 +54,28 @@ public abstract class AbstractClickhouseSinkTest
     @BeforeEach
     public void beforeEach()
     {
-        try (Client client = getClient())
+        try (Client client = getClient(CLICKHOUSE_TABLE))
         {
             client.execute("TRUNCATE TABLE " + CLICKHOUSE_TABLE).get();
+        } catch (Throwable t)
+        {
+            throw new RuntimeException(t);
         }
-        catch (Throwable t)
+        try (Client client = getClient(CLICKHOUSE_TABLE_SIMPLE))
+        {
+            client.execute("TRUNCATE TABLE " + CLICKHOUSE_TABLE_SIMPLE).get();
+        } catch (Throwable t)
         {
             throw new RuntimeException(t);
         }
     }
 
-    protected ClickHouseFileSink getSink()
+    protected ClickHouseFileSink getSink(String clickhouseTable)
     {
-        return new ClickHouseFileSink(getConfig());
+        return new ClickHouseFileSink(getConfig(clickhouseTable));
     }
 
-    public ClickHouseConfig getConfig()
+    public ClickHouseConfig getConfig(String clickhouseTable)
     {
         String url = String.format("http://%s:%d",
                                    clickhouse.getHost(),
@@ -77,13 +84,14 @@ public abstract class AbstractClickhouseSinkTest
         return new ClickHouseConfig(url,
                                     clickhouse.getUsername(),
                                     clickhouse.getPassword(),
-                                    CLICKHOUSE_TABLE,
-                                    false);
+                                    clickhouseTable,
+                                    false,
+                                    SinkModel.BYTE_BUFFER.name());
     }
 
-    public Client getClient()
+    public Client getClient(String clickhouseTable)
     {
-        ClickHouseConfig config = getConfig();
+        ClickHouseConfig config = getConfig(clickhouseTable);
         return new Client.Builder()
                 .addEndpoint(config.endpoint)
                 .setUsername(config.username)
@@ -111,12 +119,12 @@ public abstract class AbstractClickhouseSinkTest
         };
     }
 
-    public List<List<String>> clickhouseSelect() throws Throwable
+    public List<List<String>> clickhouseSelect(String table) throws Throwable
     {
         List<List<String>> result = new ArrayList<>();
 
-        try (Client client = getClient();
-             QueryResponse response = client.query("SELECT * FROM " + CLICKHOUSE_TABLE,
+        try (Client client = getClient(table);
+             QueryResponse response = client.query("SELECT * FROM " + table,
                                                    new QuerySettings().setFormat(ClickHouseFormat.TabSeparated)).get())
         {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream())))

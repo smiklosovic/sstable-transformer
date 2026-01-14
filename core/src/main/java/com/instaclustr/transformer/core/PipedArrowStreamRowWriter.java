@@ -40,8 +40,8 @@ import org.apache.spark.unsafe.types.UTF8String;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PipedOutputStream;
 import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,18 +49,17 @@ import java.util.List;
 import static org.apache.arrow.vector.types.FloatingPointPrecision.DOUBLE;
 import static org.apache.arrow.vector.types.FloatingPointPrecision.SINGLE;
 
-public class ArrowStreamInMemoryRowWriter extends AbstractRowWriter
+public class PipedArrowStreamRowWriter extends AbstractRowWriter
 {
     private static final Logger logger = LoggerFactory.getLogger(ArrowStreamInMemoryRowWriter.class);
 
-    private final ByteArrayOutputStream outputStream;
+    private final PipedOutputStream outputStream;
     private final InternalArrowStreamWriter writer;
 
-    public ArrowStreamInMemoryRowWriter(StructType structType,
-                                        ByteArrayOutputStream outputStream)
+    public PipedArrowStreamRowWriter(StructType structType,
+                                     PipedOutputStream outputStream)
     {
         this.outputStream = outputStream;
-        this.outputStream.reset();
         writer = new InternalArrowStreamWriter(getSchema(structType), outputStream, structType);
     }
 
@@ -160,6 +159,18 @@ public class ArrowStreamInMemoryRowWriter extends AbstractRowWriter
         {
             writer.close();
         }
+
+        if (outputStream != null)
+        {
+            try
+            {
+                outputStream.close();
+            }
+            catch (Throwable t)
+            {
+                logger.error("Not possible to close output stream", t);
+            }
+        }
     }
 
     public Object getOutputStream()
@@ -175,10 +186,10 @@ public class ArrowStreamInMemoryRowWriter extends AbstractRowWriter
         private final VectorSchemaRoot root;
         private final ArrowStreamWriter writer;
         private final StructType structType;
-        private final ByteArrayOutputStream outputStream;
+        private final PipedOutputStream outputStream;
         private int currentRowIndex;
 
-        public InternalArrowStreamWriter(Schema schema, ByteArrayOutputStream outputStream, StructType structType)
+        public InternalArrowStreamWriter(Schema schema, PipedOutputStream outputStream, StructType structType)
         {
             this.structType = structType;
             this.outputStream = outputStream;
@@ -210,7 +221,6 @@ public class ArrowStreamInMemoryRowWriter extends AbstractRowWriter
         {
             try
             {
-                outputStream.flush();
                 if (currentRowIndex > 0)
                 {
                     root.setRowCount(currentRowIndex);
@@ -218,6 +228,7 @@ public class ArrowStreamInMemoryRowWriter extends AbstractRowWriter
                 }
 
                 writer.end();
+                outputStream.flush();
                 writer.close();
                 root.close();
                 allocator.close();
