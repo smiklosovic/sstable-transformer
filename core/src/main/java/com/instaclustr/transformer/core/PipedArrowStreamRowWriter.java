@@ -173,11 +173,6 @@ public class PipedArrowStreamRowWriter extends AbstractRowWriter
         }
     }
 
-    public Object getOutputStream()
-    {
-        return outputStream;
-    }
-
     private static class InternalArrowStreamWriter implements AutoCloseable
     {
         private static final int BATCH_SIZE = 1000000;
@@ -206,6 +201,7 @@ public class PipedArrowStreamRowWriter extends AbstractRowWriter
 
         public void end() throws IOException
         {
+            outputStream.flush();
             if (currentRowIndex > 0)
             {
                 root.setRowCount(currentRowIndex);
@@ -213,7 +209,6 @@ public class PipedArrowStreamRowWriter extends AbstractRowWriter
                 currentRowIndex = 0;
             }
             writer.end();
-            outputStream.flush();
         }
 
         @Override
@@ -221,17 +216,10 @@ public class PipedArrowStreamRowWriter extends AbstractRowWriter
         {
             try
             {
-                if (currentRowIndex > 0)
-                {
-                    root.setRowCount(currentRowIndex);
-                    writer.writeBatch();
-                }
-
-                writer.end();
-                outputStream.flush();
                 writer.close();
                 root.close();
                 allocator.close();
+                outputStream.close();
             } catch (Throwable t)
             {
                 throw new RuntimeException("Unable to fully close " + InternalArrowStreamWriter.class.getName(), t);

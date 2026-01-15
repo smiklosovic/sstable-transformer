@@ -263,7 +263,6 @@ public class DataLayerReader implements AutoCloseable
                 }
 
                 arrowStreamInMemoryRowWriter.stop();
-                arrowStreamInMemoryRowWriter.close();
             } finally
             {
                 try
