@@ -26,7 +26,9 @@ public class ClickHouseMemorySink extends AbstractClickHouseSink
         if (!(sinkObject instanceof PipedInputStream))
             throw new IllegalArgumentException("sink object is not an instance of " + PipedInputStream.class.getName());
 
+        System.out.println("before insert");
         client.insert(config.table, (PipedInputStream) sinkObject, ClickHouseFormat.ArrowStream);
+        System.out.println("after insert");
     }
 
     private void processBuffer(Object sinkObject) throws Exception

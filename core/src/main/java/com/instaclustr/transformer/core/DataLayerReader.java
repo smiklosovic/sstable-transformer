@@ -263,6 +263,8 @@ public class DataLayerReader implements AutoCloseable
                     count++;
                 }
 
+                ProgressCounter.add(count);
+
                 arrowStreamInMemoryRowWriter.stop();
             } finally
             {
@@ -353,12 +355,17 @@ public class DataLayerReader implements AutoCloseable
                 if (count == maxRowsBeforeSink)
                 {
                     switchWriter();
+                    ProgressCounter.add(count);
+                    ProgressCounter.log();
                     count = 0;
                 }
 
                 rowWriter.accept(iterator.get());
                 count++;
             }
+
+            ProgressCounter.add(count);
+            ProgressCounter.log();
 
             arrowStreamInMemoryRowWriter.stop();
             if (count != 0)
@@ -516,7 +523,10 @@ public class DataLayerReader implements AutoCloseable
             }
 
             if (count != 0)
+            {
                 printDuration(dataLayerWrapper.currentDestination(), count, start, currentTimeMillis());
+                ProgressCounter.add(count);
+            }
         }
     }
 
@@ -575,7 +585,10 @@ public class DataLayerReader implements AutoCloseable
             sortAndWrite(rowsBuffer);
 
             if (count != 0)
+            {
                 printDuration(dataLayerWrapper.currentDestination(), count, start, currentTimeMillis());
+                ProgressCounter.add(count);
+            }
         }
 
         private void sortAndWrite(InternalRow[] rows)

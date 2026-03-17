@@ -78,6 +78,7 @@ public class TransformationExecutor implements AutoCloseable
         if (executor.isShutdown())
             throw new IllegalStateException("Executor is shut down");
 
+        logger.info("Submitting " + transformers.size() + " transformers.");
         return transformers.stream().map(t -> CompletableFuture.supplyAsync(t::transform, executor)).collect(toCollection(ArrayList::new));
     }
 

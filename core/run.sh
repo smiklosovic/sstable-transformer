@@ -32,21 +32,21 @@ JVM_OPTIONS="-DSKIP_STARTUP_VALIDATIONS=true -Dfile.encoding=UTF-8 -Djdk.attach.
 
 # USE --strategy=ONE_FILE_PER_SSTABLE when you do not want to compact
 
-java ${JVM_OPTIONS} -jar target/sstable-transformer-core-$VERSION-bundled.jar transform \
-  --cassandra-version="${CASSANDRA_VERSION}" \
-  --create-table-statement="${CREATE_STATEMENT}" \
-  --compression="${COMPRESSION}" \
-  --output="${OUTPUT_DIR}" \
-  --input="${INPUT_DIR}" \
-  --strategy=ONE_FILE_PER_SSTABLE \
-  --sorted \
-  --output-format=AVRO
+#java ${JVM_OPTIONS} -jar target/sstable-transformer-core-$VERSION-bundled.jar transform \
+#  --cassandra-version="${CASSANDRA_VERSION}" \
+#  --create-table-statement="${CREATE_STATEMENT}" \
+#  --compression="${COMPRESSION}" \
+#  --output="${OUTPUT_DIR}" \
+#  --input="${INPUT_DIR}" \
+#  --strategy=ONE_FILE_PER_SSTABLE \
+#  --sorted \
+#  --output-format=AVRO
 
-#java ${JVM_OPTIONS} -cp "./target/sstable-transformer-core-2.0.0-bundled.jar:../clickhouse/target/sstable-transformer-clickhouse-2.0.0.jar" \
-#    com.instaclustr.transformer.core.Transformer transform \
-#      --cassandra-version="FIVEZERO" \
-#      --create-table-statement="CREATE TABLE spark_test.testtable (id int primary key)" \
-#      --strategy=ONE_FILE_ALL_SSTABLES \
-#      --output-format=ARROW_STREAM \
-#      --input=/home/fermat/dev/cassandra/sstable-parquet-transformer/clickhouse/src/test/resources/sstables \
-#      --sink-config=/home/fermat/dev/cassandra/sstable-parquet-transformer/clickhouse/src/test/resources/clickhouse-sink-byte-buffer.properties
+java ${JVM_OPTIONS} -cp "./target/sstable-transformer-core-2.0.0-bundled.jar:../clickhouse/target/sstable-transformer-clickhouse-2.0.0.jar" \
+    com.instaclustr.transformer.core.Transformer transform \
+      --cassandra-version="FIVEZERO" \
+      --create-table-statement="CREATE TABLE cassandra_easy_stress.shuffled_text (key text PRIMARY KEY, value text)" \
+      --strategy=ONE_FILE_ALL_SSTABLES \
+      --output-format=ARROW_STREAM \
+      --input=/home/fermat/dev/cassandra/sstable-parquet-transformer/clickhouse/src/test/resources/sstables \
+      --sink-config=/home/fermat/dev/cassandra/sstable-parquet-transformer/clickhouse/src/test/resources/clickhouse-sink-byte-buffer.properties

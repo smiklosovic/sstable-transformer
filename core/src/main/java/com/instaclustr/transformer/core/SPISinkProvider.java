@@ -21,7 +21,7 @@ public class SPISinkProvider
 
         if (providersOfGivenName.isEmpty())
         {
-            throw new IllegalStateException(format("There are no sink provider of name %s.", sinkName));
+            throw new IllegalStateException(format("There is no sink provider of name %s.", sinkName));
         }
 
         if (providersOfGivenName.size() > 1)

@@ -74,6 +74,7 @@ public class SSTableTransformer implements Runnable
         {
             try (TransformationExecutor executor = new TransformationExecutor(options.parallelism))
             {
+                logger.info("Running transformation with parallelism " + options.parallelism);
                 return executor.run(dataLayerTransformers);
             }
         }

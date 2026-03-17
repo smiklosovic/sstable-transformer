@@ -83,7 +83,7 @@ public class SPISinkProviderTest
                 fail("should fail on non-existent sink implementation");
             } catch (Throwable t)
             {
-                assertEquals("There are no sink provider of name no-such-sink.", t.getMessage());
+                assertEquals("There is no sink provider of name no-such-sink.", t.getMessage());
             }
         }
     }
