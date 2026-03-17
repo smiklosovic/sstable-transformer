@@ -88,7 +88,8 @@ public abstract class AbstractClickhouseSinkTest
                                     clickhouse.getDatabaseName(),
                                     clickhouseTable,
                                     false,
-                                    SinkModel.BYTE_BUFFER.name());
+                                    SinkModel.BYTE_BUFFER.name(),
+                                    Long.parseLong(ClickHouseConfig.DEFAULT_SOCKET_TIMEOUT));
     }
 
     public Client getClient(String clickhouseTable)

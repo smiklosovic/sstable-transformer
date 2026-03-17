@@ -250,7 +250,9 @@ public class DataLayerReader implements AutoCloseable
                                                            }
                                                        });
 
-            arrowStreamInMemoryRowWriter = new PipedArrowStreamRowWriter(structType, outputStream);
+            int maxRowsBeforeSink = Integer.parseInt(options.sinkConfigProperties.getProperty("max_rows_before_sink",
+                    String.valueOf(InternalArrowStreamWriter.DEFAULT_BATCH_SIZE)));
+            arrowStreamInMemoryRowWriter = new PipedArrowStreamRowWriter(structType, outputStream, maxRowsBeforeSink);
             rowWriter = arrowStreamInMemoryRowWriter;
 
             try

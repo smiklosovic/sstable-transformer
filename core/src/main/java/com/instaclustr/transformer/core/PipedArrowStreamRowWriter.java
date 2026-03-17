@@ -18,8 +18,15 @@ public class PipedArrowStreamRowWriter extends AbstractRowWriter
     public PipedArrowStreamRowWriter(StructType structType,
                                      PipedOutputStream outputStream)
     {
+        this(structType, outputStream, InternalArrowStreamWriter.DEFAULT_BATCH_SIZE);
+    }
+
+    public PipedArrowStreamRowWriter(StructType structType,
+                                     PipedOutputStream outputStream,
+                                     int batchSize)
+    {
         this.outputStream = outputStream;
-        writer = new InternalArrowStreamWriter(structType, outputStream, true);
+        writer = new InternalArrowStreamWriter(structType, outputStream, true, batchSize);
     }
 
     public void start() throws IOException

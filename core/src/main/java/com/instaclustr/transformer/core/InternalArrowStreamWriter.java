@@ -53,7 +53,7 @@ class InternalArrowStreamWriter implements AutoCloseable
 {
     private static final Logger logger = LoggerFactory.getLogger(InternalArrowStreamWriter.class);
 
-    static final int BATCH_SIZE = 1000000;
+    static final int DEFAULT_BATCH_SIZE = 10000;
 
     private final RootAllocator allocator;
     private final VectorSchemaRoot root;
@@ -61,15 +61,25 @@ class InternalArrowStreamWriter implements AutoCloseable
     private final StructType structType;
     private final OutputStream outputStream;
     private final boolean flushBeforeWrite;
+    private final int batchSize;
     private int currentRowIndex;
 
     InternalArrowStreamWriter(StructType structType,
                               OutputStream outputStream,
                               boolean flushBeforeWrite)
     {
+        this(structType, outputStream, flushBeforeWrite, DEFAULT_BATCH_SIZE);
+    }
+
+    InternalArrowStreamWriter(StructType structType,
+                              OutputStream outputStream,
+                              boolean flushBeforeWrite,
+                              int batchSize)
+    {
         this.structType = structType;
         this.outputStream = outputStream;
         this.flushBeforeWrite = flushBeforeWrite;
+        this.batchSize = batchSize;
         Schema schema = buildSchema(structType);
         allocator = new RootAllocator();
         root = VectorSchemaRoot.create(schema, allocator);
@@ -129,7 +139,7 @@ class InternalArrowStreamWriter implements AutoCloseable
 
             currentRowIndex++;
 
-            if (currentRowIndex >= BATCH_SIZE)
+            if (currentRowIndex >= batchSize)
             {
                 root.setRowCount(currentRowIndex);
                 writer.writeBatch();

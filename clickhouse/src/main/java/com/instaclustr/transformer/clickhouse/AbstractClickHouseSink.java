@@ -54,6 +54,7 @@ public abstract class AbstractClickHouseSink implements TransformationSink
                     .setUsername(config.username)
                     .setDefaultDatabase(config.database)
                     .setPassword(config.password)
+                    .setSocketTimeout(config.socketTimeout)
                     .build();
         }
 
