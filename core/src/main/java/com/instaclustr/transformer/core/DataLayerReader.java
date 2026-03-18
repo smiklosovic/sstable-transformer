@@ -20,7 +20,6 @@ package com.instaclustr.transformer.core;
 
 import com.instaclustr.transformer.api.ExposedByteArrayOutputStream;
 import com.instaclustr.transformer.api.OutputFormat;
-import com.instaclustr.transformer.api.SinkModel;
 import com.instaclustr.transformer.api.TransformationSink;
 import org.apache.avro.Schema;
 import org.apache.cassandra.spark.sparksql.SparkRowIterator;
@@ -37,8 +36,6 @@ import scala.collection.Seq;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -89,29 +86,12 @@ public class DataLayerReader implements AutoCloseable
     private RowsWriter resolveRowsWriter()
     {
         if (options.outputFormat == OutputFormat.ARROW_STREAM)
-        {
-            String sinkModelPropertyValue = options.sinkConfigProperties.getProperty("sink_model");
-            if (sinkModelPropertyValue == null)
-                sinkModelPropertyValue = SinkModel.PIPE.name();
+            return new AsyncArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
 
-            logger.info("Sink model is " + sinkModelPropertyValue);
-
-            SinkModel sinkModel = SinkModel.valueOf(sinkModelPropertyValue.toUpperCase());
-            if (sinkModel == SinkModel.PIPE)
-                return new PipedArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
-            else if (sinkModel == SinkModel.BYTE_BUFFER)
-                return new ArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
-            else if (sinkModel == SinkModel.ASYNC_BYTE_BUFFER)
-                return new AsyncArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
-            else
-                throw new UnsupportedOperationException("Unsupported sink model " + sinkModel.name());
-        } else
-        {
-            if (options.sorted)
-                return new SortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
-            else
-                return new UnsortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
-        }
+        if (options.sorted)
+            return new SortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
+        else
+            return new UnsortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
     }
 
     @Override
@@ -199,221 +179,6 @@ public class DataLayerReader implements AutoCloseable
         protected abstract void record(Object individualResult);
 
         public abstract List<Object> getResults();
-    }
-
-    private static class PipedArrowStreamRowsWriter extends RowsWriter
-    {
-        private static final Logger logger = LoggerFactory.getLogger(PipedArrowStreamRowsWriter.class);
-
-        private PipedArrowStreamRowWriter arrowStreamInMemoryRowWriter;
-        private final PipedOutputStream outputStream;
-        private final PipedInputStream inputStream;
-
-        private final ExecutorService sinkExecutor =
-                Executors.newSingleThreadExecutor(r ->
-                                                  {
-                                                      Thread t = new Thread(r, "Arrow-Stream-Sink-Thread");
-                                                      t.setDaemon(true);
-                                                      return t;
-                                                  });
-
-        public PipedArrowStreamRowsWriter(DataLayerWrapper dataLayerWrapper,
-                                          TransformationSink transformationSink,
-                                          TransformerOptions options)
-        {
-            super(dataLayerWrapper, transformationSink, options);
-
-            try
-            {
-                inputStream = new PipedInputStream(10 * 1024 * 1024);
-                outputStream = new PipedOutputStream(inputStream);
-            } catch (Throwable t)
-            {
-                throw new TransformerException("Error while creating piped streams for Arrow stream writer", t);
-            }
-        }
-
-        @Override
-        protected void internalWrite(SparkRowIterator iterator) throws IOException
-        {
-            Future<?> sinkFuture = sinkExecutor.submit(() ->
-                                                       {
-                                                           try
-                                                           {
-                                                               executeSink(inputStream);
-                                                           } catch (Throwable t)
-                                                           {
-                                                               try
-                                                               {
-                                                                   inputStream.close();
-                                                               } catch (Throwable ex)
-                                                               {
-                                                                   logger.error("Error closing pipedIn", t);
-                                                               }
-                                                               logger.error("Error in sink execution", t);
-                                                               throw new TransformerException("Sink execution failed", t);
-                                                           }
-                                                       });
-
-            int maxRowsBeforeSink = Integer.parseInt(options.sinkConfigProperties.getProperty("max_rows_before_sink",
-                    String.valueOf(InternalArrowStreamWriter.DEFAULT_BATCH_SIZE)));
-            arrowStreamInMemoryRowWriter = new PipedArrowStreamRowWriter(structType, outputStream, maxRowsBeforeSink);
-            rowWriter = arrowStreamInMemoryRowWriter;
-
-            try
-            {
-                arrowStreamInMemoryRowWriter.start();
-
-                while (iterator.next())
-                {
-                    rowWriter.accept(iterator.get());
-                    count++;
-                }
-
-                ProgressCounter.add(count);
-
-                arrowStreamInMemoryRowWriter.stop();
-            } finally
-            {
-                try
-                {
-                    outputStream.close();
-                } catch (Throwable t)
-                {
-                    logger.error("Error closing output stream", t);
-                }
-
-                try
-                {
-                    sinkFuture.get(); // block until sink completes
-                } catch (Throwable t)
-                {
-                    throw new TransformerException("Error while waiting for sink execution to complete", t);
-                } finally
-                {
-                    try
-                    {
-                        inputStream.close();
-                    } catch (Throwable t)
-                    {
-                        logger.error("Error closing input stream", t);
-                    }
-                }
-            }
-        }
-
-        @Override
-        protected void record(Object individualResult)
-        {
-            // there is really nothing to "record" as a result as it is in memory
-            // and will be wiped out as soon as it is transformed by a sink somewhere
-        }
-
-        @Override
-        public List<Object> getResults()
-        {
-            return Collections.emptyList();
-        }
-
-        @Override
-        public void close()
-        {
-            try
-            {
-                sinkExecutor.shutdown();
-                if (!sinkExecutor.awaitTermination(1, TimeUnit.MINUTES))
-                {
-                    logger.warn("Unable to terminate sink executor on time.");
-                }
-            } catch (Throwable t)
-            {
-                logger.warn("Unable to terminate sink executor: " + t.getMessage());
-            }
-            super.close();
-        }
-    }
-
-    private static class ArrowStreamRowsWriter extends RowsWriter
-    {
-        private static final Logger logger = LoggerFactory.getLogger(ArrowStreamRowsWriter.class);
-
-        private ArrowStreamInMemoryRowWriter arrowStreamInMemoryRowWriter;
-        private final ByteArrayOutputStream outputStream;
-        private final int maxRowsBeforeSink;
-
-        public ArrowStreamRowsWriter(DataLayerWrapper dataLayerWrapper,
-                                     TransformationSink transformationSink,
-                                     TransformerOptions options)
-        {
-            super(dataLayerWrapper, transformationSink, options);
-            outputStream = new ByteArrayOutputStream(Integer.parseInt(options.sinkConfigProperties.getProperty("buffer_size", "1024")));
-            maxRowsBeforeSink = Integer.parseInt(options.sinkConfigProperties.getProperty("max_rows_before_sink", "100000"));
-            arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter(structType, outputStream);
-            rowWriter = arrowStreamInMemoryRowWriter;
-        }
-
-        @Override
-        protected void internalWrite(SparkRowIterator iterator) throws IOException
-        {
-            arrowStreamInMemoryRowWriter.start();
-
-            while (iterator.next())
-            {
-                if (count == maxRowsBeforeSink)
-                {
-                    switchWriter();
-                    ProgressCounter.add(count);
-                    ProgressCounter.log();
-                    count = 0;
-                }
-
-                rowWriter.accept(iterator.get());
-                count++;
-            }
-
-            ProgressCounter.add(count);
-            ProgressCounter.log();
-
-            arrowStreamInMemoryRowWriter.stop();
-            if (count != 0)
-            {
-                executeSink(arrowStreamInMemoryRowWriter.getOutputStream());
-            }
-
-            arrowStreamInMemoryRowWriter.close();
-        }
-
-        @Override
-        protected void record(Object individualResult)
-        {
-            // there is really nothing to "record" as a result as it is in memory
-            // and will be wiped out as soon as it is transformed by a sink somewhere
-        }
-
-        @Override
-        public List<Object> getResults()
-        {
-            return Collections.emptyList();
-        }
-
-        private void switchWriter() throws IOException
-        {
-            arrowStreamInMemoryRowWriter.stop();
-            executeSink(arrowStreamInMemoryRowWriter.getOutputStream());
-            arrowStreamInMemoryRowWriter.close();
-            arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter(structType, outputStream);
-            rowWriter = arrowStreamInMemoryRowWriter;
-        }
-
-        private long printDuration(int count, long start, long end)
-        {
-            logger.info("Transformed {} rows in {} seconds.",
-                        count,
-                        (end - start) / 1000);
-
-            // new start
-            return currentTimeMillis();
-        }
     }
 
     private static class AsyncArrowStreamRowsWriter extends RowsWriter
@@ -513,7 +278,6 @@ public class DataLayerReader implements AutoCloseable
                     previousSend.get();
                 } catch (Throwable t)
                 {
-                    t.printStackTrace();
                     throw new TransformerException("Error while waiting for async batch send to complete", t);
                 }
                 previousSend = null;

@@ -27,7 +27,7 @@ public class ClickHouseConfig
     public static final String DEFAULT_PASSWORD = "clickhouse";
     public static final String DEFAULT_DATABASE = "default";
     public static final String DEFAULT_REMOVE_FILE_AFTER_PROCESSED = "false";
-    public static final String DEFAULT_SINK_MODEL = "byte_buffer";
+    public static final String DEFAULT_SINK_MODEL = "async_byte_buffer";
     public static final String DEFAULT_SOCKET_TIMEOUT = "300000";
 
     public final String endpoint;
