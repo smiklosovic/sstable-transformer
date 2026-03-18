@@ -431,6 +431,9 @@ public class DataLayerReader implements AutoCloseable
             {
                 printDuration(dataLayerWrapper.currentDestination(), count, start, currentTimeMillis());
                 ProgressCounter.add(count);
+                dataLayerWrapper.currentDestination().setCount(count);
+                close();
+                executeSink(dataLayerWrapper.currentDestination());
             }
         }
     }
@@ -487,12 +490,14 @@ public class DataLayerReader implements AutoCloseable
                 }
             }
 
-            sortAndWrite(rowsBuffer);
-
             if (count != 0)
             {
+                sortAndWrite(rowsBuffer);
                 printDuration(dataLayerWrapper.currentDestination(), count, start, currentTimeMillis());
                 ProgressCounter.add(count);
+                dataLayerWrapper.currentDestination().setCount(count);
+                close();
+                executeSink(dataLayerWrapper.currentDestination());
             }
         }
 

@@ -19,7 +19,6 @@ public class ClickHouseConfig
     public static final String TABLE_PROPERTY = "table";
     public static final String REMOVE_FILE_AFTER_PROCESSED_PROPERTY = "remove_file_after_processed";
     public static final String SINK_MODEL_PROPERTY = "sink_model";
-    public static final String BUFFER_SIZE_PROPERTY = "buffer_size";
     public static final String SOCKET_TIMEOUT_PROPERTY = "socket_timeout";
 
     public static final String DEFAULT_ENDPOINT = "http://127.0.0.1:8123";

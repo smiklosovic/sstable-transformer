@@ -28,23 +28,18 @@ public class ClickHouseMemorySink extends AbstractClickHouseSink
     @Override
     public void sink(Object sinkObject) throws Exception
     {
-        if (!(sinkObject instanceof ByteArrayOutputStream))
+        if (!(sinkObject instanceof ExposedByteArrayOutputStream))
             throw new IllegalArgumentException("sink object is not an instance of " + ByteArrayOutputStream.class.getName());
 
-        ByteArrayOutputStream outputStream = (ByteArrayOutputStream) sinkObject;
+        ExposedByteArrayOutputStream outputStream = (ExposedByteArrayOutputStream) sinkObject;
         long start = System.currentTimeMillis();
 
-        byte[] data;
-        if (outputStream instanceof ExposedByteArrayOutputStream)
-            data = ((ExposedByteArrayOutputStream) outputStream).getBuffer();
-        else
-            data = outputStream.toByteArray();
-
-        try (InputStream is = new ByteArrayInputStream(data, 0, outputStream.size()))
+        try (InputStream is = new ByteArrayInputStream(outputStream.getBuffer(), 0, outputStream.size()))
         {
             client.insert(config.table, is, ClickHouseFormat.ArrowStream);
         }
         long stop = System.currentTimeMillis();
+
         logger.info("Insert took " + (stop - start));
     }
 
