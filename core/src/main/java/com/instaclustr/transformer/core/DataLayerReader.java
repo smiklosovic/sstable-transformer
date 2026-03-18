@@ -18,6 +18,7 @@
  */
 package com.instaclustr.transformer.core;
 
+import com.instaclustr.transformer.api.ExposedByteArrayOutputStream;
 import com.instaclustr.transformer.api.OutputFormat;
 import com.instaclustr.transformer.api.SinkModel;
 import com.instaclustr.transformer.api.TransformationSink;
@@ -93,11 +94,15 @@ public class DataLayerReader implements AutoCloseable
             if (sinkModelPropertyValue == null)
                 sinkModelPropertyValue = SinkModel.PIPE.name();
 
+            logger.info("Sink model is " + sinkModelPropertyValue);
+
             SinkModel sinkModel = SinkModel.valueOf(sinkModelPropertyValue.toUpperCase());
             if (sinkModel == SinkModel.PIPE)
                 return new PipedArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
             else if (sinkModel == SinkModel.BYTE_BUFFER)
                 return new ArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
+            else if (sinkModel == SinkModel.ASYNC_BYTE_BUFFER)
+                return new AsyncArrowStreamRowsWriter(dataLayerWrapper, transformationSink, options);
             else
                 throw new UnsupportedOperationException("Unsupported sink model " + sinkModel.name());
         } else
@@ -411,6 +416,140 @@ public class DataLayerReader implements AutoCloseable
         }
     }
 
+    private static class AsyncArrowStreamRowsWriter extends RowsWriter
+    {
+        private static final Logger logger = LoggerFactory.getLogger(AsyncArrowStreamRowsWriter.class);
+
+        private ArrowStreamInMemoryRowWriter arrowStreamInMemoryRowWriter;
+        private ByteArrayOutputStream outputStream;
+        private final int maxRowsBeforeSink;
+        private final int bufferSize;
+
+        private final ExecutorService sinkExecutor =
+                Executors.newSingleThreadExecutor(r ->
+                                                  {
+                                                      Thread t = new Thread(r, "Async-Arrow-Sink-Thread");
+                                                      t.setDaemon(true);
+                                                      return t;
+                                                  });
+
+        private Future<?> previousSend = null;
+
+        public AsyncArrowStreamRowsWriter(DataLayerWrapper dataLayerWrapper,
+                                          TransformationSink transformationSink,
+                                          TransformerOptions options)
+        {
+            super(dataLayerWrapper, transformationSink, options);
+            bufferSize = Integer.parseInt(options.sinkConfigProperties.getProperty("buffer_size", "10485760"));
+            maxRowsBeforeSink = Integer.parseInt(options.sinkConfigProperties.getProperty("max_rows_before_sink", "10000"));
+            outputStream = new ExposedByteArrayOutputStream(bufferSize);
+            arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter(structType, outputStream);
+            rowWriter = arrowStreamInMemoryRowWriter;
+        }
+
+        @Override
+        protected void internalWrite(SparkRowIterator iterator) throws IOException
+        {
+            arrowStreamInMemoryRowWriter.start();
+
+            while (iterator.next())
+            {
+                if (count == maxRowsBeforeSink)
+                {
+                    submitBatch();
+                    ProgressCounter.add(count);
+                    ProgressCounter.log();
+                    count = 0;
+                }
+
+                rowWriter.accept(iterator.get());
+                count++;
+            }
+
+            ProgressCounter.add(count);
+            ProgressCounter.log();
+
+            // send final batch
+            arrowStreamInMemoryRowWriter.stop();
+            if (count != 0)
+            {
+                waitForPreviousSend();
+                sendBatch(arrowStreamInMemoryRowWriter.getOutputStream());
+            }
+
+            waitForPreviousSend();
+            arrowStreamInMemoryRowWriter.close();
+        }
+
+        private void submitBatch() throws IOException
+        {
+            arrowStreamInMemoryRowWriter.stop();
+
+            // wait for previous send to complete before submitting new one
+            waitForPreviousSend();
+
+            // hand off current buffer to sink thread, create new one for next batch
+            final ByteArrayOutputStream sendBuffer = outputStream;
+            previousSend = sinkExecutor.submit(() -> executeSink(sendBuffer));
+
+            // start new writer with fresh buffer
+            outputStream = new ExposedByteArrayOutputStream(bufferSize);
+            arrowStreamInMemoryRowWriter = new ArrowStreamInMemoryRowWriter(structType, outputStream);
+            rowWriter = arrowStreamInMemoryRowWriter;
+            arrowStreamInMemoryRowWriter.start();
+        }
+
+        private void sendBatch(Object outputStream)
+        {
+            executeSink(outputStream);
+        }
+
+        private void waitForPreviousSend()
+        {
+            if (previousSend != null)
+            {
+                try
+                {
+                    previousSend.get();
+                } catch (Throwable t)
+                {
+                    t.printStackTrace();
+                    throw new TransformerException("Error while waiting for async batch send to complete", t);
+                }
+                previousSend = null;
+            }
+        }
+
+        @Override
+        protected void record(Object individualResult)
+        {
+        }
+
+        @Override
+        public List<Object> getResults()
+        {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public void close()
+        {
+            try
+            {
+                waitForPreviousSend();
+                sinkExecutor.shutdown();
+                if (!sinkExecutor.awaitTermination(1, TimeUnit.MINUTES))
+                {
+                    logger.warn("Unable to terminate async sink executor on time.");
+                }
+            } catch (Throwable t)
+            {
+                logger.warn("Unable to terminate async sink executor: " + t.getMessage());
+            }
+            super.close();
+        }
+    }
+
     private static abstract class FileBasedRowsWriter extends RowsWriter
     {
         private static final Logger logger = LoggerFactory.getLogger(FileBasedRowsWriter.class);
@@ -548,7 +687,7 @@ public class DataLayerReader implements AutoCloseable
 
             int arraySize = (int) dataLayerWrapper.getMaxRowsPerBatch();
             if (arraySize == -1)
-                arraySize = Integer.parseInt(System.getProperty("transformer.buffer.size", "10000000"));
+                arraySize = Integer.parseInt(System.getProperty("transformer.buffer.size", "1000000"));
 
             rowsBuffer = new InternalRow[arraySize];
         }
@@ -595,7 +734,7 @@ public class DataLayerReader implements AutoCloseable
 
         private void sortAndWrite(InternalRow[] rows)
         {
-            Arrays.sort(rows, Comparator.nullsLast(rowComparator));
+            Arrays.sort(rows, 0, count, Comparator.nullsLast(rowComparator));
             for (InternalRow sorted : rows)
             {
                 if (sorted != null)

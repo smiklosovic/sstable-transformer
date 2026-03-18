@@ -1,7 +1,10 @@
 package com.instaclustr.transformer.clickhouse;
 
 import com.clickhouse.data.ClickHouseFormat;
+import com.instaclustr.transformer.api.ExposedByteArrayOutputStream;
 import com.instaclustr.transformer.api.OutputFormat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -10,6 +13,8 @@ import java.io.PipedInputStream;
 
 public class ClickHouseMemorySink extends AbstractClickHouseSink
 {
+    private static final Logger logger = LoggerFactory.getLogger(ClickHouseMemorySink.class);
+
     public ClickHouseMemorySink()
     {
         super(null);
@@ -35,10 +40,20 @@ public class ClickHouseMemorySink extends AbstractClickHouseSink
             throw new IllegalArgumentException("sink object is not an instance of " + ByteArrayOutputStream.class.getName());
 
         ByteArrayOutputStream outputStream = (ByteArrayOutputStream) sinkObject;
-        try (InputStream is = new ByteArrayInputStream(outputStream.toByteArray(), 0, outputStream.size()))
+        long start = System.currentTimeMillis();
+
+        byte[] data;
+        if (outputStream instanceof ExposedByteArrayOutputStream)
+            data = ((ExposedByteArrayOutputStream) outputStream).getBuffer();
+        else
+            data = outputStream.toByteArray();
+
+        try (InputStream is = new ByteArrayInputStream(data, 0, outputStream.size()))
         {
             client.insert(config.table, is, ClickHouseFormat.ArrowStream);
         }
+        long stop = System.currentTimeMillis();
+        logger.info("Insert took " + (stop - start));
     }
 
     @Override
@@ -49,6 +64,7 @@ public class ClickHouseMemorySink extends AbstractClickHouseSink
             case PIPE:
                 processPipe(sinkObject);
                 break;
+            case ASYNC_BYTE_BUFFER:
             case BYTE_BUFFER:
                 processBuffer(sinkObject);
                 break;
