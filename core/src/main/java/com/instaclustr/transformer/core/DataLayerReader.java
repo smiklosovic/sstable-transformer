@@ -90,6 +90,8 @@ public class DataLayerReader implements AutoCloseable
 
         if (options.sorted)
             return new SortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
+        else if (transformationSink != null)
+            return new AsyncFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
         else
             return new UnsortedFileBasedRowsWriter(dataLayerWrapper, transformationSink, options);
     }
@@ -435,6 +437,126 @@ public class DataLayerReader implements AutoCloseable
                 close();
                 executeSink(dataLayerWrapper.currentDestination());
             }
+        }
+    }
+
+    private static class AsyncFileBasedRowsWriter extends FileBasedRowsWriter
+    {
+        private static final Logger logger = LoggerFactory.getLogger(AsyncFileBasedRowsWriter.class);
+
+        private final ExecutorService sinkExecutor =
+                Executors.newSingleThreadExecutor(r ->
+                                                  {
+                                                      Thread t = new Thread(r, "Async-File-Sink-Thread");
+                                                      t.setDaemon(true);
+                                                      return t;
+                                                  });
+
+        private Future<?> previousSend = null;
+
+        public AsyncFileBasedRowsWriter(DataLayerWrapper dataLayerWrapper,
+                                        TransformationSink transformationSink,
+                                        TransformerOptions options)
+        {
+            super(dataLayerWrapper, transformationSink, options);
+        }
+
+        @Override
+        protected void internalWrite(SparkRowIterator iterator) throws IOException
+        {
+            while (iterator.next())
+            {
+                if (count == dataLayerWrapper.getMaxRowsPerBatch())
+                {
+                    start = printDuration(dataLayerWrapper.currentDestination(),
+                                          count,
+                                          start,
+                                          currentTimeMillis());
+
+                    dataLayerWrapper.currentDestination().setCount(count);
+                    closeRowWriter();
+
+                    // wait for previous upload to finish before submitting next
+                    // (so we don't queue unbounded uploads)
+                    waitForPreviousSend();
+
+                    // submit current file for async upload and immediately
+                    // start writing the next file
+                    final Object fileToSink = dataLayerWrapper.currentDestination();
+                    record(dataLayerWrapper.getNextDestination());
+                    switchWriter(dataLayerWrapper.currentDestination(), options.outputFormat);
+                    count = 0;
+
+                    previousSend = sinkExecutor.submit(() -> executeSink(fileToSink));
+                }
+
+                rowWriter.accept(iterator.get());
+                count++;
+            }
+
+            if (count != 0)
+            {
+                printDuration(dataLayerWrapper.currentDestination(), count, start, currentTimeMillis());
+                ProgressCounter.add(count);
+                dataLayerWrapper.currentDestination().setCount(count);
+                closeRowWriter();
+
+                waitForPreviousSend();
+
+                final Object fileToSink = dataLayerWrapper.currentDestination();
+                previousSend = sinkExecutor.submit(() -> executeSink(fileToSink));
+            }
+
+            // wait for last file to finish uploading
+            waitForPreviousSend();
+        }
+
+        private void closeRowWriter()
+        {
+            if (rowWriter != null)
+            {
+                try
+                {
+                    rowWriter.close();
+                } catch (Exception e)
+                {
+                    throw new TransformerException("Error closing row writer", e);
+                }
+                rowWriter = null;
+            }
+        }
+
+        private void waitForPreviousSend()
+        {
+            if (previousSend != null)
+            {
+                try
+                {
+                    previousSend.get();
+                } catch (Throwable t)
+                {
+                    throw new TransformerException("Error while waiting for async file sink to complete", t);
+                }
+                previousSend = null;
+            }
+        }
+
+        @Override
+        public void close()
+        {
+            try
+            {
+                waitForPreviousSend();
+                sinkExecutor.shutdown();
+                if (!sinkExecutor.awaitTermination(1, TimeUnit.MINUTES))
+                {
+                    logger.warn("Unable to terminate async file sink executor on time.");
+                }
+            } catch (Throwable t)
+            {
+                logger.warn("Unable to terminate async file sink executor: " + t.getMessage());
+            }
+            super.close();
         }
     }
 
